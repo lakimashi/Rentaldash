@@ -2,6 +2,8 @@
 
 A minimalistic web dashboard for rental agencies to manage cars, availability, bookings, incidents, and maintenance. Portable and deployable with a single setup script. Ready for future AI booking chatbot integration (API keys, REST API).
 
+For a complete Linux install and production deployment, see [INSTALLATION](INSTALLATION).
+
 ## Quick start (local, no Docker)
 
 1. **Backend (Node 18+)**

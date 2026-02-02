@@ -1,0 +1,218 @@
+# Rental Dashboard – Installation and deployment on Linux
+
+This guide covers installing and deploying the Rental Dashboard on a Linux server (e.g. Ubuntu 22.04 LTS). The app uses Node.js, SQLite, and a React frontend. All configuration is via environment variables for portability.
+
+---
+
+## 1. Prerequisites
+
+- **Linux:** Ubuntu 22.04 LTS or similar (Debian, CentOS, etc.).
+- **Node.js 18+** and **npm.** Install one of these ways:
+
+  **Option A – NodeSource (Ubuntu/Debian):**
+  ```bash
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+  node -v   # should be v18 or higher
+  ```
+
+  **Option B – nvm (any user):**
+  ```bash
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+  source ~/.bashrc   # or restart terminal
+  nvm install 20
+  nvm use 20
+  node -v
+  ```
+
+- **Git:** `sudo apt-get install -y git` (or equivalent).
+
+---
+
+## 2. Clone the repository
+
+```bash
+git clone <your-repo-url> rental-dashboard
+cd rental-dashboard
+```
+
+Replace `<your-repo-url>` with your Git remote (e.g. `https://github.com/yourorg/rental-dashboard.git`).
+
+---
+
+## 3. Backend setup
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+Edit `.env`:
+
+- **SQLITE_PATH** – Path to the SQLite database file.
+  - Development: `./data/rental.db` (relative to backend directory).
+  - Production: use a persistent path, e.g. `/var/lib/rental-dashboard/data/rental.db`. Create the directory: `sudo mkdir -p /var/lib/rental-dashboard/data` and set ownership so the app user can write.
+- **JWT_SECRET** – Secret for JWT tokens. Generate with: `openssl rand -hex 32`.
+- **PORT** – Optional; default is 3001.
+- **SEED_ADMIN_EMAIL** / **SEED_ADMIN_PASSWORD** – Used only when you run the seed script (demo admin account).
+- **UPLOAD_DIR** – Optional; default `./uploads`. For production you may use e.g. `/var/lib/rental-dashboard/uploads`.
+
+Then:
+
+```bash
+npm install
+npm run db:migrate    # creates DB and tables
+npm run db:seed       # creates admin user and demo data (optional; skip for production if you want no demo data)
+```
+
+Run the backend:
+
+- **Development:** `npm run dev` (restarts on file changes).
+- **Production:** `node src/index.js` (or use a process manager; see section 5).
+
+Backend will listen on http://localhost:3001 (or the port in `.env`).
+
+---
+
+## 4. Frontend setup
+
+Open a new terminal (or run in background) from the repo root:
+
+```bash
+cd frontend
+npm install
+```
+
+- **Development:** `npm run dev`. Frontend runs at http://localhost:5173 and proxies `/api` and `/uploads` to the backend (ensure backend is running on port 3001).
+- **Production:** `npm run build`. This creates the `frontend/dist/` folder. Serve it with a web server (e.g. nginx) and proxy `/api` and `/uploads` to the backend (see section 5).
+
+---
+
+## 5. Production deployment on Linux
+
+### Process manager (backend)
+
+Run the Node backend under a process manager so it restarts on failure and starts on boot.
+
+**Option A – systemd**
+
+Create a unit file, e.g. `/etc/systemd/system/rental-dashboard.service`:
+
+```ini
+[Unit]
+Description=Rental Dashboard API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/path/to/rental-dashboard/backend
+Environment=NODE_ENV=production
+EnvironmentFile=/path/to/rental-dashboard/backend/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Adjust `User`, `WorkingDirectory`, and `EnvironmentFile` to your paths. Then:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable rental-dashboard
+sudo systemctl start rental-dashboard
+sudo systemctl status rental-dashboard
+```
+
+**Option B – pm2**
+
+```bash
+sudo npm install -g pm2
+cd /path/to/rental-dashboard/backend
+pm2 start src/index.js --name rental-api
+pm2 save
+pm2 startup   # follow the printed command to enable startup on boot
+```
+
+### Paths (production)
+
+- **SQLITE_PATH:** Use a persistent path, e.g. `/var/lib/rental-dashboard/data/rental.db`. Create the directory and set ownership:
+  ```bash
+  sudo mkdir -p /var/lib/rental-dashboard/data /var/lib/rental-dashboard/uploads
+  sudo chown -R www-data:www-data /var/lib/rental-dashboard
+  ```
+- **UPLOAD_DIR:** e.g. `/var/lib/rental-dashboard/uploads` (same as above).
+
+### Reverse proxy (nginx)
+
+Install nginx: `sudo apt-get install -y nginx`.
+
+Example server block (e.g. `/etc/nginx/sites-available/rental-dashboard`):
+
+```nginx
+server {
+  listen 80;
+  server_name your-domain.com;   # or your server IP
+
+  root /path/to/rental-dashboard/frontend/dist;
+  index index.html;
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location /api {
+    proxy_pass http://127.0.0.1:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+
+  location /uploads {
+    proxy_pass http://127.0.0.1:3001;
+    proxy_set_header Host $host;
+  }
+}
+```
+
+Enable and reload:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/rental-dashboard /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Replace `/path/to/rental-dashboard` with your actual repo path and ensure the backend is running on port 3001.
+
+### Optional: Docker on Linux
+
+If you use Docker and Docker Compose (with PostgreSQL, not SQLite):
+
+```bash
+cd /path/to/rental-dashboard
+cp .env.example .env
+# Edit .env: set JWT_SECRET, optionally SEED_DEMO=true
+bash deploy/setup.sh
+```
+
+The app will be available on port 80. For SQLite-based portable deployment, use the steps above (sections 3–5) instead of Docker.
+
+---
+
+## 6. Verify
+
+1. Open the app in a browser: http://your-server-ip or http://your-domain.com (or http://localhost:5173 in dev).
+2. Log in with the seeded admin account (if you ran `npm run db:seed`): **admin@demo.com** / **DemoAdmin123!** (or the password set in `SEED_ADMIN_PASSWORD` in backend `.env`).
+
+---
+
+## 7. Troubleshooting
+
+- **Backend won’t start:** Check Node version (`node -v`, 18+). Ensure `SQLITE_PATH` is writable by the process user and the directory exists. Ensure `JWT_SECRET` is set in `.env`.
+- **Frontend can’t reach API:** In development, ensure the backend is running on port 3001 and the frontend dev server proxies to it (default in vite.config.js). In production, check nginx proxy_pass and that the backend is listening on 127.0.0.1:3001 (or the configured port).
+- **Database errors:** Ensure `npm run db:migrate` was run and that the SQLite file path in `SQLITE_PATH` is correct and writable.
+- **Permission denied on uploads or data:** Ensure the user running the backend (e.g. www-data) owns or can write to `UPLOAD_DIR` and the directory containing `SQLITE_PATH`.
