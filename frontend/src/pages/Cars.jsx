@@ -132,8 +132,11 @@ export default function Cars() {
           {cars.map((car) => (
             <Card key={car.id} className={`overflow-hidden hover:shadow-md transition-shadow ${selectedIds.includes(car.id) ? 'ring-2 ring-primary' : ''}`}>
               <div className="aspect-video bg-muted relative flex items-center justify-center">
-                {/* Placeholder for car image if we had one */}
-                <span className="text-muted-foreground text-4xl font-light">{car.make[0]}</span>
+                {car.images && car.images[0] ? (
+                  <img src={`${import.meta.env.VITE_API_URL || ''}${car.images[0].url_path}`} alt={`${car.make} ${car.model}`} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-muted-foreground text-4xl font-light">{car.make[0]}</span>
+                )}
                 <Badge
                   variant={car.status === 'active' ? 'success' : car.status === 'maintenance' ? 'warning' : 'secondary'}
                   className="absolute top-2 right-2"

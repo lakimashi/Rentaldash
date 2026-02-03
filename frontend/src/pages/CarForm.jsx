@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select } from '../components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X, Image as ImageIcon } from 'lucide-react';
 
 export default function CarForm() {
   const { id } = useParams();
@@ -19,6 +19,8 @@ export default function CarForm() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [images, setImages] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     api('/api/branches').then(setBranches).catch(() => { });
@@ -36,11 +38,12 @@ export default function CarForm() {
           vin: car.vin ?? '',
           notes: car.notes ?? '',
         });
+        if (car.images) setImages(car.images);
       }).catch((e) => setError(e.message));
     }
   }, [id, isEdit]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -52,9 +55,55 @@ export default function CarForm() {
       vin: form.vin || null,
       notes: form.notes || null,
     };
-    (isEdit ? api(`/api/cars/${id}`, { method: 'PUT', body: payload }) : api('/api/cars', { method: 'POST', body: payload }))
-      .then(() => navigate('/cars'))
-      .catch((e) => { setError(e.message); setLoading(false); });
+
+    try {
+      const res = isEdit
+        ? await api(`/api/cars/${id}`, { method: 'PUT', body: payload })
+        : await api('/api/cars', { method: 'POST', body: payload });
+
+      const carId = isEdit ? id : res.id;
+
+      // Handle Image Upload if any new files are selected (not implemented via state here yet, purely separate step for simplicity or need to augment)
+      // Actually, let's allow uploading directly from the UI *after* save or *during* edit. 
+      // For creation, we redirect to edit to add images or handle it here?
+      // Let's redirect to edit view if created, or just back to list.
+      // If user added images in the specialized upload section (which we will add below), they are uploaded immediately.
+
+      navigate('/cars');
+    } catch (e) {
+      setError(e.message);
+      setLoading(false);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    if (!e.target.files.length) return;
+    const formData = new FormData();
+    for (let i = 0; i < e.target.files.length; i++) {
+      formData.append('images', e.target.files[i]);
+    }
+
+    setUploading(true);
+    try {
+      // We need to use fetch directly or update client to handle formData
+      // Using direct fetch for multipart/form-data to let browser set boundary
+      const token = localStorage.getItem('rental_token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/cars/${id}/images`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }, // Don't set Content-Type
+        body: formData
+      });
+      if (!res.ok) throw new Error('Failed to upload images');
+
+      // Refresh car data to show new images
+      const car = await api(`/api/cars/${id}`);
+      setImages(car.images || []);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+      e.target.value = null; // Reset input
+    }
   };
 
   return (
@@ -68,7 +117,7 @@ export default function CarForm() {
         <h1 className="text-2xl font-bold tracking-tight">{isEdit ? 'Edit Vehicle' : 'Add New Vehicle'}</h1>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Vehicle Details</CardTitle>
@@ -151,6 +200,41 @@ export default function CarForm() {
           </CardFooter>
         </Card>
       </form>
+
+      {isEdit && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Vehicle Images</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              {images.map((img) => (
+                <div key={img.id} className="relative aspect-video bg-muted rounded-lg overflow-hidden border">
+                  <img src={`${import.meta.env.VITE_API_URL || ''}${img.url_path}`} alt="Car" className="w-full h-full object-cover" />
+                </div>
+              ))}
+              <div className="aspect-video bg-muted rounded-lg border flex items-center justify-center relative cursor-pointer hover:bg-muted/80 transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                />
+                <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                  {uploading ? <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" /> : <ImageIcon className="h-8 w-8" />}
+                  <span className="text-xs font-medium">{uploading ? 'Uploading...' : 'Upload Images'}</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Tip: Upload horizontal images for best results.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
+
