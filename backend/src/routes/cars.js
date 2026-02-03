@@ -10,13 +10,22 @@ import { logAudit } from '../services/auditService.js';
 
 const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
 const carImagesDir = path.join(uploadDir, 'cars');
+const vehicleDocsDir = path.join(uploadDir, 'vehicles');
 if (!fs.existsSync(carImagesDir)) fs.mkdirSync(carImagesDir, { recursive: true });
+if (!fs.existsSync(vehicleDocsDir)) fs.mkdirSync(vehicleDocsDir, { recursive: true });
 const carUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, carImagesDir),
     filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`),
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
+});
+const documentUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, vehicleDocsDir),
+    filename: (req, file, cb) => cb(null, `${req.params.id}_${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`),
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 export const carsRouter = Router();
@@ -33,20 +42,23 @@ const carSchema = z.object({
   base_daily_rate: z.number().min(0),
   vin: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  current_mileage: z.number().int().min(0).optional(),
+  registration_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  insurance_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
 });
 
 carsRouter.get('/', async (req, res, next) => {
   try {
     const { status, class: carClass, branch_id } = req.query;
-    let q = 'SELECT c.*, b.name AS branch_name FROM cars c LEFT JOIN branches b ON c.branch_id = b.id WHERE 1=1';
+    let q = 'SELECT c.*, b.name AS branch_name, COUNT(vd.id) as doc_count FROM cars c LEFT JOIN branches b ON c.branch_id = b.id LEFT JOIN vehicle_documents vd ON c.id = vd.car_id WHERE 1=1';
     const params = [];
     let i = 1;
     if (status) { q += ` AND c.status = $${i}`; params.push(status); i++; }
     if (carClass) { q += ` AND c.class = $${i}`; params.push(carClass); i++; }
     if (branch_id) { q += ` AND c.branch_id = $${i}`; params.push(branch_id); i++; }
-    q += ' ORDER BY c.plate_number';
+    q += ' GROUP BY c.id ORDER BY c.plate_number';
     const r = await pool.query(q, params);
-    const cars = r.rows.map((c) => ({ ...c, base_daily_rate: parseFloat(c.base_daily_rate) }));
+    const cars = r.rows.map((c) => ({ ...c, base_daily_rate: parseFloat(c.base_daily_rate), doc_count: c.doc_count || 0 }));
     const withImages = await Promise.all(cars.map(async (car) => {
       const imgs = await pool.query('SELECT id, url_path FROM car_images WHERE car_id = $1', [car.id]);
       return { ...car, images: imgs.rows };
@@ -70,13 +82,17 @@ carsRouter.get('/:id', async (req, res, next) => {
 
 carsRouter.post('/', requireRole('admin', 'staff'), async (req, res, next) => {
   try {
-    const body = carSchema.parse({ ...req.body, year: req.body.year != null ? Number(req.body.year) : undefined });
+    const body = carSchema.parse({ 
+      ...req.body, 
+      year: req.body.year != null ? Number(req.body.year) : undefined,
+      current_mileage: req.body.current_mileage != null ? Number(req.body.current_mileage) : undefined,
+    });
     const existing = await pool.query('SELECT 1 FROM cars WHERE plate_number = $1', [body.plate_number]);
     if (existing.rows.length) throw new AppError('Plate number already exists', 400);
     const r = await pool.query(
-      `INSERT INTO cars (plate_number, make, model, year, class, branch_id, status, base_daily_rate, vin, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [body.plate_number, body.make, body.model, body.year, body.class, body.branch_id ?? null, body.status ?? 'active', body.base_daily_rate, body.vin ?? null, body.notes ?? null]
+      `INSERT INTO cars (plate_number, make, model, year, class, branch_id, status, base_daily_rate, vin, notes, current_mileage, registration_expiry, insurance_expiry)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      [body.plate_number, body.make, body.model, body.year, body.class, body.branch_id ?? null, body.status ?? 'active', body.base_daily_rate, body.vin ?? null, body.notes ?? null, body.current_mileage ?? 0, body.registration_expiry ?? null, body.insurance_expiry ?? null]
     );
     const car = r.rows[0];
     await logAudit(req.user.id, 'create', 'car', car.id, { plate_number: car.plate_number });
@@ -86,7 +102,11 @@ carsRouter.post('/', requireRole('admin', 'staff'), async (req, res, next) => {
 
 carsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next) => {
   try {
-    const body = carSchema.partial().parse({ ...req.body, year: req.body.year != null ? Number(req.body.year) : undefined });
+    const body = carSchema.partial().parse({ 
+      ...req.body, 
+      year: req.body.year != null ? Number(req.body.year) : undefined,
+      current_mileage: req.body.current_mileage != null ? Number(req.body.current_mileage) : undefined,
+    });
     const updates = [];
     const values = [];
     let i = 1;
@@ -100,6 +120,9 @@ carsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next) => 
     if (body.base_daily_rate !== undefined) { updates.push(`base_daily_rate = $${i}`); values.push(body.base_daily_rate); i++; }
     if (body.vin !== undefined) { updates.push(`vin = $${i}`); values.push(body.vin); i++; }
     if (body.notes !== undefined) { updates.push(`notes = $${i}`); values.push(body.notes); i++; }
+    if (body.current_mileage !== undefined) { updates.push(`current_mileage = $${i}`); values.push(body.current_mileage); i++; }
+    if (body.registration_expiry !== undefined) { updates.push(`registration_expiry = $${i}`); values.push(body.registration_expiry); i++; }
+    if (body.insurance_expiry !== undefined) { updates.push(`insurance_expiry = $${i}`); values.push(body.insurance_expiry); i++; }
     if (updates.length === 0) throw new AppError('No fields to update', 400);
     values.push(req.params.id);
     const r = await pool.query(
@@ -137,5 +160,41 @@ carsRouter.post('/:id/images', requireRole('admin', 'staff'), carUpload.array('i
       inserted.push(ins.rows[0]);
     }
     res.status(201).json(inserted);
+  } catch (e) { next(e); }
+});
+
+carsRouter.get('/:id/documents', requireRole('admin', 'staff'), async (req, res, next) => {
+  try {
+    const r = await pool.query('SELECT * FROM vehicle_documents WHERE car_id = $1 ORDER BY created_at DESC', [req.params.id]);
+    res.json(r.rows);
+  } catch (e) { next(e); }
+});
+
+carsRouter.post('/:id/documents', requireRole('admin', 'staff'), documentUpload.single('document'), async (req, res, next) => {
+  try {
+    const carId = req.params.id;
+    const r = await pool.query('SELECT 1 FROM cars WHERE id = $1', [carId]);
+    if (!r.rows[0]) throw new AppError('Car not found', 404);
+    
+    if (!req.file) throw new AppError('No file uploaded', 400);
+    
+    const urlPath = `/uploads/vehicles/${path.basename(req.file.filename)}`;
+    const ins = await pool.query(
+      `INSERT INTO vehicle_documents (car_id, document_type, title, expiry_date, url_path, file_size, uploaded_by) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [carId, req.body.document_type, req.body.title, req.body.expiry_date || null, urlPath, req.file.size, req.user.id]
+    );
+    res.status(201).json(ins.rows[0]);
+  } catch (e) { next(e); }
+});
+
+carsRouter.delete('/documents/:docId', requireRole('admin', 'staff'), async (req, res, next) => {
+  try {
+    const r = await pool.query('DELETE FROM vehicle_documents WHERE id = $1 RETURNING url_path', [req.params.docId]);
+    if (!r.rows[0]) throw new AppError('Document not found', 404);
+    const urlPath = r.rows[0].url_path;
+    const filePath = path.join(uploadDir, urlPath);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    res.json({ ok: true });
   } catch (e) { next(e); }
 });

@@ -12,6 +12,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - deploy_internal
+      - n8n-proxy-network
 
   backend:
     build:
@@ -19,27 +22,40 @@ services:
       dockerfile: Dockerfile
     environment:
       NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/rental_dashboard
+      PORT: 3010
+      SQLITE_PATH: /app/data/rental.db
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 7d
       UPLOAD_DIR: /app/uploads
       FRONTEND_URL: http://localhost
     volumes:
       - uploads_data:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - db_data:/app/data
+    networks:
+      - deploy_internal
+      - n8n-proxy-network
+    restart: unless-stopped
 
   frontend:
     build:
       context: ../frontend
       dockerfile: Dockerfile
     ports:
-      - "80:80"
+      - "8081:80"
     depends_on:
       - backend
+    restart: unless-stopped
+    networks:
+      - deploy_internal
+      - n8n-proxy-network
+
+networks:
+  deploy_internal:
+    driver: bridge
+  n8n-proxy-network:
+    external: true
 
 volumes:
   pgdata:
   uploads_data:
+  db_data:

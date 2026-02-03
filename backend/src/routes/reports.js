@@ -65,9 +65,87 @@ reportsRouter.get('/export/:type', async (req, res, next) => {
       rows = r.rows;
       headers = ['id', 'incident_date', 'severity', 'description', 'estimated_cost', 'status', 'plate_number'];
     }
-    const csv = [headers.join(','), ...rows.map((row) => headers.map((h) => JSON.stringify(row[h] ?? '')).join(','))].join('\n');
+    const csvRows = rows.map((row) => headers.map((h) => JSON.stringify(row[h] ?? '')).join(','));
+    const csv = [headers.join(','), ...csvRows].join('\n');
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${type}-export.csv"`);
     res.send(csv);
+  } catch (e) { next(e); }
+});
+
+reportsRouter.get('/profit', async (req, res, next) => {
+  try {
+    const { car_id, from, to } = req.query;
+    let whereClause = 'WHERE b.status IN (\'completed\', \'active\')';
+    const params = [];
+    let i = 1;
+    
+    if (car_id) { whereClause += ` AND b.car_id = $${i}`; params.push(car_id); i++; }
+    if (from) { whereClause += ` AND b.start_date >= $${i}`; params.push(from); i++; }
+    if (to) { whereClause += ` AND b.start_date <= $${i}`; params.push(to); i++; }
+    
+    const r = await pool.query(
+      `SELECT 
+        b.car_id,
+        c.plate_number,
+        c.make,
+        c.model,
+        SUM(b.total_price - b.deposit) as revenue,
+        COALESCE(SUM(e.amount), 0) as expenses,
+        SUM(b.total_price - b.deposit) - COALESCE(SUM(e.amount), 0) as profit,
+        COUNT(b.id) as bookings_count
+       FROM bookings b
+       JOIN cars c ON b.car_id = c.id
+       LEFT JOIN expenses e ON e.car_id = c.id
+       ${whereClause}
+       GROUP BY b.car_id
+       ORDER BY profit DESC`,
+      params
+    );
+    
+    const profitData = r.rows.map((row) => ({
+      car_id: row.car_id,
+      plate_number: row.plate_number,
+      make: row.make,
+      model: row.model,
+      revenue: parseFloat(row.revenue || 0),
+      expenses: parseFloat(row.expenses || 0),
+      profit: parseFloat(row.profit || 0),
+      bookings_count: row.bookings_count,
+    }));
+    
+    const totals = await pool.query(
+      `SELECT 
+        SUM(b.total_price - b.deposit) as total_revenue,
+        COALESCE(SUM(e.amount), 0) as total_expenses,
+        SUM(b.total_price - b.deposit) - COALESCE(SUM(e.amount), 0) as total_profit
+       FROM bookings b
+       LEFT JOIN expenses e ON e.car_id = b.car_id
+       ${whereClause}`,
+      params
+    );
+    
+    const categoryBreakdown = await pool.query(
+      `SELECT 
+        category,
+        COALESCE(SUM(amount), 0) as total
+       FROM expenses e
+       WHERE 1=1
+       GROUP BY category
+       ORDER BY total DESC`
+    );
+    
+    res.json({
+      by_vehicle: profitData,
+      totals: {
+        revenue: parseFloat(totals.rows[0]?.total_revenue || 0),
+        expenses: parseFloat(totals.rows[0]?.total_expenses || 0),
+        profit: parseFloat(totals.rows[0]?.total_profit || 0),
+      },
+      by_category: categoryBreakdown.rows.map((row) => ({
+        category: row.category,
+        total: parseFloat(row.total || 0),
+      })),
+    });
   } catch (e) { next(e); }
 });

@@ -1,0 +1,1759 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Rental Dashboard API",
+    "description": "RESTful API for managing car rental operations including cars, bookings, customers, expenses, maintenance, and incidents.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "API Support"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3010",
+      "description": "Development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token or API key authentication"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["admin", "staff", "readonly"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Car": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "plate_number": { "type": "string" },
+          "make": { "type": "string" },
+          "model": { "type": "string" },
+          "year": { "type": "integer" },
+          "class": { "type": "string" },
+          "branch_id": { "type": "integer", "nullable": true },
+          "branch_name": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["active", "maintenance", "inactive"] },
+          "base_daily_rate": { "type": "number", "format": "float" },
+          "vin": { "type": "string", "nullable": true },
+          "notes": { "type": "string", "nullable": true },
+          "current_mileage": { "type": "integer" },
+          "registration_expiry": { "type": "string", "format": "date", "nullable": true },
+          "insurance_expiry": { "type": "string", "format": "date", "nullable": true },
+          "doc_count": { "type": "integer" },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "url_path": { "type": "string" }
+              }
+            }
+          },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Booking": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "car_id": { "type": "integer" },
+          "plate_number": { "type": "string" },
+          "make": { "type": "string" },
+          "model": { "type": "string" },
+          "customer_name": { "type": "string" },
+          "customer_phone": { "type": "string", "nullable": true },
+          "customer_id_passport": { "type": "string", "nullable": true },
+          "customer_id": { "type": "integer", "nullable": true },
+          "start_date": { "type": "string", "format": "date" },
+          "end_date": { "type": "string", "format": "date" },
+          "status": { "type": "string", "enum": ["draft", "reserved", "confirmed", "active", "completed", "cancelled"] },
+          "total_price": { "type": "number", "format": "float" },
+          "deposit": { "type": "number", "format": "float" },
+          "notes": { "type": "string", "nullable": true },
+          "start_mileage": { "type": "integer", "nullable": true },
+          "end_mileage": { "type": "integer", "nullable": true },
+          "miles_driven": { "type": "integer" },
+          "actual_return_date": { "type": "string", "format": "date", "nullable": true },
+          "late_fee_amount": { "type": "number", "format": "float" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "extras": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "extra_name": { "type": "string" },
+                "extra_price": { "type": "number" }
+              }
+            }
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "email": { "type": "string", "format": "email", "nullable": true },
+          "phone": { "type": "string", "nullable": true },
+          "address": { "type": "string", "nullable": true },
+          "id_number": { "type": "string", "nullable": true },
+          "license_expiry": { "type": "string", "format": "date", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Expense": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "car_id": { "type": "integer" },
+          "plate_number": { "type": "string" },
+          "make": { "type": "string" },
+          "model": { "type": "string" },
+          "category": { "type": "string", "enum": ["maintenance", "insurance", "registration", "cleaning", "misc", "fuel"] },
+          "amount": { "type": "number", "format": "float" },
+          "description": { "type": "string", "nullable": true },
+          "expense_date": { "type": "string", "format": "date" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Incident": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "car_id": { "type": "integer" },
+          "plate_number": { "type": "string" },
+          "make": { "type": "string" },
+          "model": { "type": "string" },
+          "booking_id": { "type": "integer", "nullable": true },
+          "incident_date": { "type": "string" },
+          "severity": { "type": "string", "enum": ["minor", "major"] },
+          "description": { "type": "string", "nullable": true },
+          "estimated_cost": { "type": "number", "format": "float", "nullable": true },
+          "status": { "type": "string", "enum": ["open", "under_review", "resolved"] },
+          "created_at": { "type": "string", "format": "date-time" },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "url_path": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "user": { "$ref": "#/components/schemas/User" }
+        }
+      },
+      "MaintenanceBlock": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "car_id": { "type": "integer" },
+          "plate_number": { "type": "string" },
+          "make": { "type": "string" },
+          "model": { "type": "string" },
+          "start_date": { "type": "string", "format": "date" },
+          "end_date": { "type": "string", "format": "date" },
+          "reason": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Settings": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "agency_name": { "type": "string" },
+          "currency": { "type": "string" },
+          "vat_percent": { "type": "number", "format": "float" },
+          "logo_path": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LateFeeRule": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "hours_from": { "type": "integer" },
+          "hours_to": { "type": "integer", "nullable": true },
+          "fee_amount": { "type": "number", "format": "float" },
+          "fee_type": { "type": "string", "enum": ["flat", "percentage"] },
+          "is_active": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ApiKey": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "token": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "last_used_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer" },
+          "type": { "type": "string", "enum": ["overdue", "expiring_registration", "expiring_insurance", "other"] },
+          "title": { "type": "string" },
+          "message": { "type": "string" },
+          "entity_type": { "type": "string", "nullable": true },
+          "entity_id": { "type": "string", "nullable": true },
+          "is_read": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Branch": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "address": { "type": "string", "nullable": true },
+          "phone": { "type": "string", "nullable": true }
+        }
+      },
+      "VehicleDocument": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "car_id": { "type": "integer" },
+          "document_type": { "type": "string", "enum": ["registration", "insurance", "inspection", "other"] },
+          "title": { "type": "string" },
+          "expiry_date": { "type": "string", "format": "date", "nullable": true },
+          "url_path": { "type": "string" },
+          "file_size": { "type": "integer" },
+          "uploaded_by": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "summary": "Authenticate user and get JWT token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LoginResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Logout user",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": {
+            "description": "Successfully logged out",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Get current authenticated user",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cars": {
+      "get": {
+        "summary": "List all cars",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["active", "maintenance", "inactive"] } },
+          { "name": "class", "in": "query", "schema": { "type": "string" } },
+          { "name": "branch_id", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of cars",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Car" } }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create a new car",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["plate_number", "make", "model", "year", "class", "base_daily_rate"],
+                "properties": {
+                  "plate_number": { "type": "string" },
+                  "make": { "type": "string" },
+                  "model": { "type": "string" },
+                  "year": { "type": "integer", "minimum": 1900, "maximum": 2100 },
+                  "class": { "type": "string" },
+                  "branch_id": { "type": "integer", "nullable": true },
+                  "status": { "type": "string", "enum": ["active", "maintenance", "inactive"], "default": "active" },
+                  "base_daily_rate": { "type": "number", "minimum": 0 },
+                  "vin": { "type": "string", "nullable": true },
+                  "notes": { "type": "string", "nullable": true },
+                  "current_mileage": { "type": "integer", "minimum": 0 },
+                  "registration_expiry": { "type": "string", "format": "date", "nullable": true },
+                  "insurance_expiry": { "type": "string", "format": "date", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Car created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Car" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/cars/{id}": {
+      "get": {
+        "summary": "Get car by ID",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Car details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Car" }
+              }
+            }
+          },
+          "404": { "description": "Car not found" }
+        }
+      },
+      "put": {
+        "summary": "Update car",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plate_number": { "type": "string" },
+                  "make": { "type": "string" },
+                  "model": { "type": "string" },
+                  "year": { "type": "integer" },
+                  "class": { "type": "string" },
+                  "branch_id": { "type": "integer", "nullable": true },
+                  "status": { "type": "string", "enum": ["active", "maintenance", "inactive"] },
+                  "base_daily_rate": { "type": "number", "minimum": 0 },
+                  "vin": { "type": "string", "nullable": true },
+                  "notes": { "type": "string", "nullable": true },
+                  "current_mileage": { "type": "integer", "minimum": 0 },
+                  "registration_expiry": { "type": "string", "format": "date", "nullable": true },
+                  "insurance_expiry": { "type": "string", "format": "date", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Car updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Car" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Car not found" }
+        }
+      },
+      "delete": {
+        "summary": "Archive car (soft delete)",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Car archived",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Car not found" }
+        }
+      }
+    },
+    "/api/cars/{id}/images": {
+      "post": {
+        "summary": "Upload car images",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "images": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "binary" },
+                    "maxItems": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Images uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "url_path": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/cars/{id}/documents": {
+      "get": {
+        "summary": "Get car documents",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/VehicleDocument" }
+                }
+              }
+            }
+          },
+          "403": { "description": "Forbidden" }
+        }
+      },
+      "post": {
+        "summary": "Upload car document",
+        "tags": ["Cars"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["document", "document_type", "title"],
+                "properties": {
+                  "document": { "type": "string", "format": "binary" },
+                  "document_type": { "type": "string", "enum": ["registration", "insurance", "inspection", "other"] },
+                  "title": { "type": "string" },
+                  "expiry_date": { "type": "string", "format": "date" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Document uploaded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/VehicleDocument" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/bookings": {
+      "get": {
+        "summary": "List all bookings",
+        "tags": ["Bookings"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["draft", "reserved", "confirmed", "active", "completed", "cancelled"] } },
+          { "name": "car_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of bookings",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Booking" } }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create a new booking",
+        "tags": ["Bookings"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["car_id", "customer_name", "start_date", "end_date"],
+                "properties": {
+                  "car_id": { "type": "integer" },
+                  "customer_name": { "type": "string" },
+                  "customer_phone": { "type": "string", "nullable": true },
+                  "customer_id_passport": { "type": "string", "nullable": true },
+                  "customer_id": { "type": "integer", "nullable": true },
+                  "start_date": { "type": "string", "format": "date" },
+                  "end_date": { "type": "string", "format": "date" },
+                  "status": { "type": "string", "enum": ["draft", "reserved", "confirmed", "active", "completed", "cancelled"], "default": "draft" },
+                  "total_price": { "type": "number", "minimum": 0 },
+                  "deposit": { "type": "number", "minimum": 0 },
+                  "notes": { "type": "string", "nullable": true },
+                  "extras": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "extra_name": { "type": "string" },
+                        "extra_price": { "type": "number" }
+                      }
+                    }
+                  },
+                  "start_mileage": { "type": "integer", "nullable": true },
+                  "end_mileage": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Booking created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Booking" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input or car not available" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/bookings/{id}": {
+      "get": {
+        "summary": "Get booking by ID",
+        "tags": ["Bookings"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Booking" }
+              }
+            }
+          },
+          "404": { "description": "Booking not found" }
+        }
+      },
+      "put": {
+        "summary": "Update booking",
+        "tags": ["Bookings"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "car_id": { "type": "integer" },
+                  "customer_name": { "type": "string" },
+                  "customer_phone": { "type": "string", "nullable": true },
+                  "customer_id_passport": { "type": "string", "nullable": true },
+                  "customer_id": { "type": "integer", "nullable": true },
+                  "start_date": { "type": "string", "format": "date" },
+                  "end_date": { "type": "string", "format": "date" },
+                  "status": { "type": "string", "enum": ["draft", "reserved", "confirmed", "active", "completed", "cancelled"] },
+                  "total_price": { "type": "number", "minimum": 0 },
+                  "deposit": { "type": "number", "minimum": 0 },
+                  "notes": { "type": "string", "nullable": true },
+                  "extras": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "extra_name": { "type": "string" },
+                        "extra_price": { "type": "number" }
+                      }
+                    }
+                  },
+                  "start_mileage": { "type": "integer", "nullable": true },
+                  "end_mileage": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Booking" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Booking not found" }
+        }
+      }
+    },
+    "/api/bookings/{id}/status": {
+      "put": {
+        "summary": "Update booking status",
+        "tags": ["Bookings"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["draft", "reserved", "confirmed", "active", "completed", "cancelled"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Booking" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Booking not found" }
+        }
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "summary": "List all customers",
+        "tags": ["Customers"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search in name, email, phone, or ID number" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of customers",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Customer" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new customer",
+        "tags": ["Customers"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+                  "email": { "type": "string", "format": "email", "nullable": true },
+                  "phone": { "type": "string", "minLength": 10, "maxLength": 20, "nullable": true },
+                  "address": { "type": "string", "maxLength": 500, "nullable": true },
+                  "id_number": { "type": "string", "maxLength": 50, "nullable": true },
+                  "license_expiry": { "type": "string", "format": "date", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Customer created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Customer" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/customers/{id}": {
+      "get": {
+        "summary": "Get customer by ID with booking history",
+        "tags": ["Customers"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer details with bookings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "customer": { "$ref": "#/components/schemas/Customer" },
+                    "bookings": { "type": "array", "items": { "$ref": "#/components/schemas/Booking" } }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Customer not found" }
+        }
+      },
+      "put": {
+        "summary": "Update customer",
+        "tags": ["Customers"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email", "nullable": true },
+                  "phone": { "type": "string", "nullable": true },
+                  "address": { "type": "string", "nullable": true },
+                  "id_number": { "type": "string", "nullable": true },
+                  "license_expiry": { "type": "string", "format": "date", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Customer updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Customer" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Customer not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete customer",
+        "tags": ["Customers"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer deleted",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Customer not found" }
+        }
+      }
+    },
+    "/api/availability": {
+      "get": {
+        "summary": "Check car availability for dates",
+        "tags": ["Availability"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "start", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "end", "in": "query", "required": true, "schema": { "type": "string", "format": "date" } },
+          { "name": "class", "in": "query", "schema": { "type": "string" } },
+          { "name": "branch_id", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of available cars",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Car" } }
+              }
+            }
+          },
+          "400": { "description": "Missing required parameters" }
+        }
+      }
+    },
+    "/api/branches": {
+      "get": {
+        "summary": "List all branches",
+        "tags": ["Branches"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of branches",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Branch" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/expenses": {
+      "get": {
+        "summary": "List all expenses",
+        "tags": ["Expenses"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "car_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "category", "in": "query", "schema": { "type": "string", "enum": ["maintenance", "insurance", "registration", "cleaning", "misc", "fuel"] } },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of expenses",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Expense" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new expense",
+        "tags": ["Expenses"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["car_id", "category", "amount"],
+                "properties": {
+                  "car_id": { "type": "integer" },
+                  "category": { "type": "string", "enum": ["maintenance", "insurance", "registration", "cleaning", "misc", "fuel"] },
+                  "amount": { "type": "number", "minimum": 0 },
+                  "description": { "type": "string", "nullable": true },
+                  "expense_date": { "type": "string", "format": "date" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Expense created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Expense" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/expenses/{id}": {
+      "get": {
+        "summary": "Get expense by ID",
+        "tags": ["Expenses"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Expense" }
+              }
+            }
+          },
+          "404": { "description": "Expense not found" }
+        }
+      },
+      "put": {
+        "summary": "Update expense",
+        "tags": ["Expenses"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "car_id": { "type": "integer" },
+                  "category": { "type": "string", "enum": ["maintenance", "insurance", "registration", "cleaning", "misc", "fuel"] },
+                  "amount": { "type": "number", "minimum": 0 },
+                  "description": { "type": "string", "nullable": true },
+                  "expense_date": { "type": "string", "format": "date" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Expense updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Expense" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Expense not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete expense",
+        "tags": ["Expenses"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Expense deleted",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Expense not found" }
+        }
+      }
+    },
+    "/api/maintenance": {
+      "get": {
+        "summary": "List maintenance blocks",
+        "tags": ["Maintenance"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "car_id", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of maintenance blocks",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/MaintenanceBlock" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create maintenance block",
+        "tags": ["Maintenance"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["car_id", "start_date", "end_date"],
+                "properties": {
+                  "car_id": { "type": "integer" },
+                  "start_date": { "type": "string", "format": "date" },
+                  "end_date": { "type": "string", "format": "date" },
+                  "reason": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Maintenance block created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MaintenanceBlock" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/incidents": {
+      "get": {
+        "summary": "List incidents",
+        "tags": ["Incidents"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["open", "under_review", "resolved"] } },
+          { "name": "car_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "severity", "in": "query", "schema": { "type": "string", "enum": ["minor", "major"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of incidents",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Incident" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create incident",
+        "tags": ["Incidents"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["car_id", "incident_date", "severity"],
+                "properties": {
+                  "car_id": { "type": "integer" },
+                  "booking_id": { "type": "integer", "nullable": true },
+                  "incident_date": { "type": "string" },
+                  "severity": { "type": "string", "enum": ["minor", "major"] },
+                  "description": { "type": "string", "nullable": true },
+                  "estimated_cost": { "type": "number", "nullable": true },
+                  "status": { "type": "string", "enum": ["open", "under_review", "resolved"], "default": "open" },
+                  "images": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "binary" },
+                    "maxItems": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Incident created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Incident" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/incidents/{id}": {
+      "get": {
+        "summary": "Get incident by ID",
+        "tags": ["Incidents"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Incident details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Incident" }
+              }
+            }
+          },
+          "404": { "description": "Incident not found" }
+        }
+      }
+    },
+    "/api/incidents/{id}/status": {
+      "put": {
+        "summary": "Update incident status",
+        "tags": ["Incidents"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["open", "under_review", "resolved"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Incident" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Incident not found" }
+        }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "summary": "Get agency settings",
+        "tags": ["Settings"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Settings",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Settings" }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update agency settings",
+        "tags": ["Settings"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "agency_name": { "type": "string" },
+                  "currency": { "type": "string" },
+                  "vat_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "logo_path": { "type": "string", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settings updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Settings" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/api/settings/late-fee-rules": {
+      "get": {
+        "summary": "Get late fee rules",
+        "tags": ["Settings"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of late fee rules",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/LateFeeRule" } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      },
+      "post": {
+        "summary": "Create late fee rule",
+        "tags": ["Settings"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["hours_from", "fee_amount", "fee_type"],
+                "properties": {
+                  "hours_from": { "type": "integer", "minimum": 0 },
+                  "hours_to": { "type": "integer", "nullable": true },
+                  "fee_amount": { "type": "number", "minimum": 0 },
+                  "fee_type": { "type": "string", "enum": ["flat", "percentage"] },
+                  "is_active": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Late fee rule created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LateFeeRule" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/api/settings/late-fee-rules/{id}": {
+      "put": {
+        "summary": "Update late fee rule",
+        "tags": ["Settings"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "hours_from": { "type": "integer" },
+                  "hours_to": { "type": "integer", "nullable": true },
+                  "fee_amount": { "type": "number" },
+                  "fee_type": { "type": "string", "enum": ["flat", "percentage"] },
+                  "is_active": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Late fee rule updated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LateFeeRule" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Late fee rule not found" }
+        }
+      },
+      "delete": {
+        "summary": "Delete late fee rule",
+        "tags": ["Settings"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Late fee rule deleted",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "Late fee rule not found" }
+        }
+      }
+    },
+    "/api/integrations/api-keys": {
+      "get": {
+        "summary": "List API keys",
+        "tags": ["Integrations"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of API keys",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ApiKey" } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      },
+      "post": {
+        "summary": "Create API key",
+        "tags": ["Integrations"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "API key created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ApiKey" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/api/integrations/api-keys/{id}": {
+      "delete": {
+        "summary": "Delete API key",
+        "tags": ["Integrations"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "API key deleted",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" },
+          "404": { "description": "API key not found" }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "summary": "List all users",
+        "tags": ["Users"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/User" } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      },
+      "post": {
+        "summary": "Create a new user",
+        "tags": ["Users"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "role"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 6 },
+                  "role": { "type": "string", "enum": ["admin", "staff", "readonly"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/api/reports": {
+      "get": {
+        "summary": "Get dashboard statistics",
+        "tags": ["Reports"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Dashboard statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cars_total": { "type": "integer" },
+                    "available_today": { "type": "integer" },
+                    "bookings_today": { "type": "integer" },
+                    "active_rentals": { "type": "integer" },
+                    "pending_incidents": { "type": "integer" },
+                    "revenue_total": { "type": "number" },
+                    "utilization_percent": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/export/{type}": {
+      "get": {
+        "summary": "Export data to CSV",
+        "tags": ["Reports"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "type", "in": "path", "required": true, "schema": { "type": "string", "enum": ["bookings", "cars", "incidents"] } }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV file",
+            "content": {
+              "text/csv": { "schema": { "type": "string" } }
+            }
+          },
+          "400": { "description": "Invalid type" }
+        }
+      }
+    },
+    "/api/reports/profit": {
+      "get": {
+        "summary": "Get profit report",
+        "tags": ["Reports"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "car_id", "in": "query", "schema": { "type": "integer" } },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" } },
+          { "name": "to", "in": "query", "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profit report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "by_vehicle": { "type": "array", "items": { "type": "object" } },
+                    "totals": { "type": "object" },
+                    "by_category": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "summary": "Get audit logs",
+        "tags": ["Audit"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "maximum": 500, "default": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit logs",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "type": "object" } }
+              }
+            }
+          },
+          "403": { "description": "Forbidden - Admin only" }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "summary": "Get notifications",
+        "tags": ["Notifications"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "unread", "in": "query", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notifications",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Notification" } }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Mark all notifications as read",
+        "tags": ["Notifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "All notifications marked as read",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "ok": { "type": "boolean" } } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "summary": "Get unread notification count",
+        "tags": ["Notifications"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Unread count",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "count": { "type": "integer" } } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "put": {
+        "summary": "Mark notification as read",
+        "tags": ["Notifications"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Notification" }
+              }
+            }
+          },
+          "404": { "description": "Notification not found" }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Authentication", "description": "User authentication endpoints" },
+    { "name": "Cars", "description": "Car management endpoints" },
+    { "name": "Bookings", "description": "Booking management endpoints" },
+    { "name": "Customers", "description": "Customer management endpoints" },
+    { "name": "Availability", "description": "Car availability checking" },
+    { "name": "Branches", "description": "Branch management" },
+    { "name": "Expenses", "description": "Expense tracking" },
+    { "name": "Maintenance", "description": "Maintenance scheduling" },
+    { "name": "Incidents", "description": "Incident reporting" },
+    { "name": "Settings", "description": "Agency settings" },
+    { "name": "Integrations", "description": "API key management" },
+    { "name": "Users", "description": "User management" },
+    { "name": "Reports", "description": "Reports and analytics" },
+    { "name": "Audit", "description": "Audit logs" },
+    { "name": "Notifications", "description": "User notifications" }
+  ]
+}

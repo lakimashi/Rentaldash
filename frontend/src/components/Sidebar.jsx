@@ -4,8 +4,11 @@ import { useAuth } from '../context/AuthContext';
 const links = [
   { to: '/', label: 'Overview' },
   { to: '/availability', label: 'Availability' },
+  { to: '/calendar', label: 'Calendar' },
   { to: '/cars', label: 'Cars' },
   { to: '/bookings', label: 'Bookings' },
+  { to: '/customers', label: 'Customers' },
+  { to: '/expenses', label: 'Expenses' },
   { to: '/incidents', label: 'Incidents' },
   { to: '/maintenance', label: 'Maintenance' },
   { to: '/reports', label: 'Reports' },

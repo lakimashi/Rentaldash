@@ -1,26 +1,33 @@
 import 'dotenv/config';
-import bcrypt from 'bcrypt';
 import pool from '../src/db.js';
+import bcrypt from 'bcryptjs';
 
 const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@demo.com';
 const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'DemoAdmin123!';
 
 async function seed() {
+  console.log('Starting seed...');
+  
   const passwordHash = await bcrypt.hash(adminPassword, 10);
 
   await pool.query(
-    `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')
-     ON CONFLICT (email) DO UPDATE SET password_hash = excluded.password_hash, role = 'admin'`,
+    `INSERT OR IGNORE INTO users (email, password_hash, role) VALUES ($1, $2, 'admin')`,
     [adminEmail, passwordHash]
   );
   await pool.query(
-    `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, 'staff')
-     ON CONFLICT (email) DO NOTHING`,
+    `UPDATE users SET password_hash = $1, role = 'admin' WHERE email = $2`,
+    [passwordHash, adminEmail]
+  );
+  console.log('Created admin user');
+  
+  await pool.query(
+    `INSERT OR IGNORE INTO users (email, password_hash, role) VALUES ($1, $2, 'staff')`,
     ['staff@demo.com', passwordHash]
   );
+  console.log('Created staff user');
 
   const branchRes = await pool.query(
-    `INSERT INTO branches (name, address, phone) VALUES ('Main Branch', '123 Main St', '+1234567890')`
+    `INSERT OR IGNORE INTO branches (name, address, phone) VALUES ('Main Branch', '123 Main St', '+1234567890')`
   );
   let branchId = 1;
   const branchRow = await pool.query('SELECT id FROM branches ORDER BY id DESC LIMIT 1');
@@ -29,9 +36,8 @@ async function seed() {
   const carClasses = ['Economy', 'Sedan', 'SUV', 'Luxury'];
   for (let i = 1; i <= 8; i++) {
     await pool.query(
-      `INSERT INTO cars (plate_number, make, model, year, class, branch_id, status, base_daily_rate)
-       VALUES ($1, $2, $3, $4, $5, $6, 'active', $7)
-       ON CONFLICT (plate_number) DO NOTHING`,
+      `INSERT OR IGNORE INTO cars (plate_number, make, model, year, class, branch_id, status, base_daily_rate)
+       VALUES ($1, $2, $3, $4, $5, $6, 'active', $7)`,
       [`DEMO-${100 + i}`, `Make${i}`, `Model${i}`, 2020 + (i % 4), carClasses[i % 4], branchId, 50 + i * 10]
     );
   }

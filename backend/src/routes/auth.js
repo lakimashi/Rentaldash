@@ -1,22 +1,14 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { error: 'Too many login attempts' },
-});
-
 export const authRouter = Router();
 
 authRouter.post(
   '/login',
-  loginLimiter,
   async (req, res, next) => {
     try {
       const { email, password } = req.body;

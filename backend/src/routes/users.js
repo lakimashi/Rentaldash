@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import pool from '../db.js';
 import { authMiddleware, requireAdmin } from '../middleware/auth.js';

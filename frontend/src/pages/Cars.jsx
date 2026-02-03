@@ -14,6 +14,16 @@ export default function Cars() {
 
   const [allClasses, setAllClasses] = useState([]);
 
+  const handleDelete = async (carId, plateNumber) => {
+    if (!window.confirm(`Are you sure you want to delete car ${plateNumber}? This will set it to inactive.`)) return;
+    try {
+      await api(`/api/cars/${carId}`, { method: 'DELETE' });
+      setCars(cars.filter((c) => c.id !== carId));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
     api('/api/cars').then((list) => {
       const uniq = [...new Set(list.map((c) => c.class))].sort();
@@ -82,8 +92,13 @@ export default function Cars() {
                   <td className="px-4 py-2 text-sm text-gray-600">{car.year}</td>
                   <td className="px-4 py-2 text-sm text-gray-600">{car.class}</td>
                   <td className="px-4 py-2 text-sm">${car.base_daily_rate}/day</td>
-                  <td className="px-4 py-2 text-sm"><span className={`px-2 py-0.5 rounded text-xs ${car.status === 'active' ? 'bg-green-100 text-green-800' : car.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>{car.status}</span></td>
-                  {canEdit && <td className="px-4 py-2 text-right"><Link to={`/cars/${car.id}/edit`} className="text-sm text-gray-800 hover:underline">Edit</Link></td>}
+                   <td className="px-4 py-2 text-sm"><span className={`px-2 py-0.5 rounded text-xs ${car.status === 'active' ? 'bg-green-100 text-green-800' : car.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>{car.status}</span></td>
+                   {canEdit && (
+                     <td className="px-4 py-2 text-right">
+                       <Link to={`/cars/${car.id}/edit`} className="text-sm text-gray-800 hover:underline mr-3">Edit</Link>
+                       <button onClick={() => handleDelete(car.id, car.plate_number)} className="text-sm text-red-600 hover:underline">Delete</button>
+                     </td>
+                   )}
                 </tr>
               ))}
             </tbody>

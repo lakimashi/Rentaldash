@@ -14,6 +14,10 @@ import { usersRouter } from './routes/users.js';
 import { reportsRouter } from './routes/reports.js';
 import { auditRouter } from './routes/audit.js';
 import { branchesRouter } from './routes/branches.js';
+import { customersRouter } from './routes/customers.js';
+import { expensesRouter } from './routes/expenses.js';
+import { notificationsRouter, getOverdueBookings, getExpiringCars, createNotification } from './routes/notifications.js';
+import { startScheduler } from './services/scheduler.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -22,6 +26,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.set('trust proxy', true);
 app.use('/uploads', express.static('uploads'));
 
 app.use('/api/auth', authRouter);
@@ -36,9 +41,13 @@ app.use('/api/users', usersRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/branches', branchesRouter);
+app.use('/api/customers', customersRouter);
+app.use('/api/expenses', expensesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startScheduler();
 });

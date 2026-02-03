@@ -14,6 +14,12 @@ import Maintenance from './pages/Maintenance';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Audit from './pages/Audit';
+import Customers from './pages/Customers';
+import Expenses from './pages/Expenses';
+import CalendarPage from './pages/Calendar';
+import ReturnChecklist from './pages/ReturnChecklist';
+import Notifications from './pages/Notifications';
+import VehicleDocuments from './pages/VehicleDocuments';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -49,6 +55,12 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="audit" element={<Audit />} />
+          <Route path="customers" element={<Customers />} />
+          <Route path="expenses" element={<Expenses />} />
+          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="bookings/:id/return" element={<ReturnChecklist />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="cars/:id/documents" element={<VehicleDocuments />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
