@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/button';
+import { Card, CardContent } from '../components/ui/card';
+import { Bell, Check, Clock, AlertCircle, Info } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
@@ -29,7 +33,7 @@ export default function Notifications() {
 
   const markAsRead = async (id) => {
     await api(`/api/notifications/${id}/read`, { method: 'PUT' });
-    setNotifications(notifications.map((n) => 
+    setNotifications(notifications.map((n) =>
       n.id === id ? { ...n, is_read: true } : n
     ));
     setUnreadCount(Math.max(0, unreadCount - 1));
@@ -41,65 +45,80 @@ export default function Notifications() {
     setUnreadCount(0);
   };
 
-  const getTypeColor = (type) => {
-    const colors = {
-      overdue: 'bg-red-100 text-red-800 border-red-200',
-      expiring: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      system: 'bg-blue-100 text-blue-800 border-blue-200',
-    };
-    return colors[type] || 'bg-gray-100 text-gray-800 border-gray-200';
-  };
-
   const getEntityLink = (type, entityId) => {
     if (type === 'booking') return `/bookings/${entityId}`;
     if (type === 'car') return `/cars/${entityId}`;
     return '#';
   };
 
-  if (loading) return <div className="text-gray-500">Loading...</div>;
+  const getTypeStyles = (type) => {
+    switch (type) {
+      case 'overdue': return 'border-red-100 bg-red-50 text-red-900';
+      case 'expiring': return 'border-yellow-100 bg-yellow-50 text-yellow-900';
+      default: return 'border-blue-100 bg-blue-50 text-blue-900';
+    }
+  };
+
+  const getTypeIcon = (type) => {
+    switch (type) {
+      case 'overdue': return AlertCircle;
+      case 'expiring': return Clock;
+      default: return Info;
+    }
+  }
+
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading notifications...</div>;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Notifications</h1>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
+          <p className="text-muted-foreground">Stay updated on bookings and alerts.</p>
+        </div>
         {unreadCount > 0 && (
-          <button type="button" onClick={markAllAsRead} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm">
-            Mark All as Read ({unreadCount})
-          </button>
+          <Button onClick={markAllAsRead} variant="outline" size="sm">
+            <Check className="mr-2 h-4 w-4" /> Mark All Read
+          </Button>
         )}
       </div>
 
       {notifications.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
-          No notifications yet.
+        <div className="text-center py-12 border-2 border-dashed rounded-xl">
+          <Bell className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
+          <p className="text-muted-foreground">No notifications yet.</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {notifications.map((n) => (
-            <div key={n.id} className={`bg-white border rounded-lg p-4 ${n.is_read ? 'border-gray-200 opacity-75' : getTypeColor(n.type)}`}>
-              <div className="flex justify-between items-start mb-2">
-                <h3 className={`text-lg font-medium ${n.is_read ? 'text-gray-700' : 'text-gray-900'}`}>
-                  {n.title}
-                </h3>
-                {!n.is_read && (
-                  <button onClick={() => markAsRead(n.id)} className="text-sm text-blue-600 hover:underline">
-                    Mark as read
-                  </button>
-                )}
-              </div>
-              <p className={`text-sm mb-2 ${n.is_read ? 'text-gray-600' : 'text-gray-800'}`}>
-                {n.message}
-              </p>
-              <div className="flex justify-between items-center text-xs text-gray-500">
-                <span>{new Date(n.created_at).toLocaleString()}</span>
-                {n.entity_id && (
-                  <Link to={getEntityLink(n.entity_type, n.entity_id)} className="text-gray-600 hover:underline">
-                    View {n.entity_type}
-                  </Link>
-                )}
-              </div>
-            </div>
-          ))}
+          {notifications.map((n) => {
+            const Icon = getTypeIcon(n.type);
+            return (
+              <Card key={n.id} className={cn("transition-all", n.is_read ? 'opacity-60 bg-white' : getTypeStyles(n.type))}>
+                <CardContent className="p-4 flex gap-4 items-start">
+                  <div className={cn("p-2 rounded-full bg-white/50")}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">{n.title}</h3>
+                    <p className="text-sm mt-1 mb-2 opacity-90">{n.message}</p>
+                    <div className="flex justify-between items-center text-xs opacity-70">
+                      <span>{new Date(n.created_at).toLocaleString()}</span>
+                      {n.entity_id && (
+                        <Link to={getEntityLink(n.entity_type, n.entity_id)} className="underline hover:opacity-100">
+                          View Details
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                  {!n.is_read && (
+                    <Button variant="ghost" size="icon" onClick={() => markAsRead(n.id)} title="Mark as read" className="h-8 w-8">
+                      <Check className="h-4 w-4" />
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

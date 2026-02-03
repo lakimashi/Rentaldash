@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select } from '../components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Wrench, Plus, X } from 'lucide-react';
 
 export default function Maintenance() {
   const [blocks, setBlocks] = useState([]);
@@ -37,71 +44,100 @@ export default function Maintenance() {
       .finally(() => setSubmitting(false));
   };
 
-  if (loading) return <div className="text-gray-500">Loading...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
-
   const today = new Date().toISOString().slice(0, 10);
 
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading maintenance schedule...</div>;
+  if (error) return <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>;
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Maintenance</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Maintenance</h1>
+          <p className="text-muted-foreground">Schedule and track vehicle maintenance.</p>
+        </div>
         {canEdit && (
-          <button type="button" onClick={() => setShowForm(!showForm)} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">
-            {showForm ? 'Cancel' : 'Add maintenance window'}
-          </button>
+          <Button onClick={() => setShowForm(!showForm)}>
+            {showForm ? <><X className="mr-2 h-4 w-4" /> Cancel</> : <><Plus className="mr-2 h-4 w-4" /> Schedule Maintenance</>}
+          </Button>
         )}
       </div>
+
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg p-4 mb-6 max-w-xl space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Car *</label>
-            <select required value={form.car_id} onChange={(e) => setForm({ ...form, car_id: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2">
-              <option value="">Select car</option>
-              {cars.filter((c) => c.status === 'active').map((c) => <option key={c.id} value={c.id}>{c.plate_number} – {c.make} {c.model}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start date *</label>
-              <input type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" min={today} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End date *</label>
-              <input type="date" required value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" min={form.start_date || today} />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-            <input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" placeholder="Service, tires..." />
-          </div>
-          <button type="submit" disabled={submitting} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 disabled:opacity-50">{submitting ? 'Adding...' : 'Add'}</button>
-        </form>
+        <Card className="animate-slide-up border-l-4 border-l-primary">
+          <CardHeader>
+            <CardTitle>New Maintenance Schedule</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+              <div>
+                <Label>Vehicle *</Label>
+                <Select required value={form.car_id} onChange={(e) => setForm({ ...form, car_id: e.target.value })}>
+                  <option value="">-- Select Car --</option>
+                  {cars.filter((c) => c.status === 'active').map((c) => (
+                    <option key={c.id} value={c.id}>{c.plate_number} – {c.make} {c.model}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Date *</Label>
+                  <Input type="date" required value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} min={today} />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Date *</Label>
+                  <Input type="date" required value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} min={form.start_date || today} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Reason</Label>
+                <Input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="e.g., Oil change, Tire rotation..." />
+              </div>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Scheduling...' : 'Schedule Maintenance'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
-      {blocks.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">No maintenance blocks. {canEdit && 'Add one above.'}</div>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Car</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Start – End</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Reason</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        {blocks.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No maintenance scheduled.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vehicle</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead className="w-[100px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {blocks.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-4 py-2 text-sm">{m.plate_number} · {m.make} {m.model}</td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{m.start_date} – {m.end_date}</td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{m.reason || '—'}</td>
-                </tr>
+                <TableRow key={m.id}>
+                  <TableCell className="font-medium">
+                    <div>{m.make} {m.model}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{m.plate_number}</div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {m.start_date} <span className="mx-1">→</span> {m.end_date}
+                  </TableCell>
+                  <TableCell>{m.reason || '—'}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit">
+                      <Wrench className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

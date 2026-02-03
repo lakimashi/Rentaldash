@@ -2,8 +2,20 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/button';
+import { Select } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Plus, Check, MoreHorizontal, Pencil } from 'lucide-react';
 
-const statusColors = { draft: 'bg-gray-100 text-gray-700', reserved: 'bg-blue-100 text-blue-800', confirmed: 'bg-green-100 text-green-800', active: 'bg-yellow-100 text-yellow-800', completed: 'bg-gray-100 text-gray-600', cancelled: 'bg-red-100 text-red-800' };
+const statusBadgeVariants = {
+  draft: 'secondary',
+  reserved: 'default',
+  confirmed: 'success',
+  active: 'warning',
+  completed: 'secondary',
+  cancelled: 'destructive'
+};
 
 export default function Bookings() {
   const [bookings, setBookings] = useState([]);
@@ -22,56 +34,99 @@ export default function Bookings() {
       .finally(() => setLoading(false));
   }, [status]);
 
-  if (loading) return <div className="text-gray-500">Loading...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading bookings...</div>;
+  if (error) return <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Bookings</h1>
-        {canEdit && <Link to="/bookings/new" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">New booking</Link>}
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Bookings</h1>
+          <p className="text-muted-foreground">Manage reservations and active rentals.</p>
+        </div>
+        {canEdit && (
+          <Link to="/bookings/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> New Booking
+            </Button>
+          </Link>
+        )}
       </div>
-      <div className="mb-4">
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm">
-          <option value="">All statuses</option>
+
+      <div className="flex items-center gap-2 bg-card p-4 rounded-xl border shadow-sm max-w-sm">
+        <span className="text-sm font-medium whitespace-nowrap">Filter Status:</span>
+        <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full">
+          <option value="">All Statuses</option>
           <option value="draft">Draft</option>
           <option value="reserved">Reserved</option>
           <option value="confirmed">Confirmed</option>
           <option value="active">Active</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
-        </select>
+        </Select>
       </div>
-      {bookings.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
-          No bookings yet. {canEdit && <Link to="/bookings/new" className="text-gray-800 font-medium hover:underline">Create one</Link>}
-        </div>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Customer</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Car</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Dates</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        {bookings.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">No bookings found.</p>
+            {canEdit && <Link to="/bookings/new"><Button variant="outline">Create a booking</Button></Link>}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Vehicle</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Total Price</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {bookings.map((b) => (
-                <tr key={b.id}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{b.customer_name}</td>
-                  <td className="px-4 py-2 text-sm">{b.plate_number} · {b.make} {b.model}</td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{b.start_date} – {b.end_date}</td>
-                  <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded text-xs ${statusColors[b.status] || 'bg-gray-100'}`}>{b.status}</span></td>
-                  <td className="px-4 py-2 text-sm">${b.total_price}</td>
-                </tr>
+                <TableRow key={b.id}>
+                  <TableCell className="font-medium">{b.customer_name}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span>{b.make} {b.model}</span>
+                      <span className="text-xs text-muted-foreground font-mono">{b.plate_number}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {b.start_date} <span className="mx-1">→</span> {b.end_date}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={statusBadgeVariants[b.status] || 'secondary'}>
+                      {b.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    ${b.total_price}
+                  </TableCell>
+                  <TableCell className="flex gap-1 justify-end">
+                    {canEdit && (
+                      <Link to={`/bookings/${b.id}/edit`}>
+                        <Button size="sm" variant="ghost" title="Edit Booking">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    )}
+                    {b.status === 'active' && (
+                      <Link to={`/bookings/${b.id}/return`}>
+                        <Button size="sm" variant="ghost" title="Return Vehicle">
+                          <Check className="h-4 w-4 text-green-600" />
+                        </Button>
+                      </Link>
+                    )}
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select } from '../components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/card';
+import { ArrowLeft } from 'lucide-react';
 
 export default function IncidentForm() {
   const { id } = useParams();
@@ -20,7 +26,7 @@ export default function IncidentForm() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api('/api/cars').then(setCars).catch(() => {});
+    api('/api/cars').then(setCars).catch(() => { });
     if (isEdit) {
       api(`/api/incidents/${id}`).then((inc) => {
         setForm({
@@ -67,56 +73,90 @@ export default function IncidentForm() {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">{isEdit ? 'Edit incident' : 'New incident'}</h1>
-      <form onSubmit={handleSubmit} className="max-w-xl space-y-4">
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Car *</label>
-          <select required value={form.car_id} onChange={(e) => setForm({ ...form, car_id: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" disabled={isEdit}>
-            <option value="">Select car</option>
-            {cars.map((c) => <option key={c.id} value={c.id}>{c.plate_number} – {c.make} {c.model}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Incident date *</label>
-          <input type="datetime-local" required value={form.incident_date} onChange={(e) => setForm({ ...form, incident_date: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" disabled={isEdit} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Severity *</label>
-          <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" disabled={isEdit}>
-            <option value="minor">Minor</option>
-            <option value="major">Major</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" rows={3} disabled={isEdit} />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Estimated cost</label>
-          <input type="number" value={form.estimated_cost} onChange={(e) => setForm({ ...form, estimated_cost: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" min="0" step="0.01" disabled={isEdit} />
-        </div>
-        {isEdit && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2">
-              <option value="open">Open</option>
-              <option value="under_review">Under Review</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </div>
-        )}
-        {!isEdit && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Photos</label>
-            <input type="file" accept="image/*" multiple onChange={(e) => setImages([...e.target.files])} className="w-full border border-gray-300 rounded px-3 py-2" />
-          </div>
-        )}
-        <div className="flex gap-2">
-          <button type="submit" disabled={loading} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 disabled:opacity-50">{loading ? 'Saving...' : isEdit ? 'Update status' : 'Create incident'}</button>
-          <Link to="/incidents" className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50">Cancel</Link>
-        </div>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center gap-4">
+        <Link to="/incidents">
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-bold tracking-tight">{isEdit ? 'Incident Details' : 'Report Incident'}</h1>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Incident Report</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg">{error}</div>}
+
+            <div className="space-y-2">
+              <Label>Vehicle *</Label>
+              <Select required value={form.car_id} onChange={(e) => setForm({ ...form, car_id: e.target.value })} disabled={isEdit}>
+                <option value="">-- Select Car --</option>
+                {cars.map((c) => <option key={c.id} value={c.id}>{c.plate_number} – {c.make} {c.model}</option>)}
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date & Time *</Label>
+                <Input type="datetime-local" required value={form.incident_date} onChange={(e) => setForm({ ...form, incident_date: e.target.value })} disabled={isEdit} />
+              </div>
+              <div className="space-y-2">
+                <Label>Severity *</Label>
+                <Select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} disabled={isEdit}>
+                  <option value="minor">Minor</option>
+                  <option value="major">Major</option>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <textarea
+                className="flex h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                disabled={isEdit}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Estimated Cost ($)</Label>
+              <Input type="number" value={form.estimated_cost} onChange={(e) => setForm({ ...form, estimated_cost: e.target.value })} min="0" step="0.01" disabled={isEdit} />
+            </div>
+
+            {!isEdit && (
+              <div className="space-y-2">
+                <Label>Upload Images</Label>
+                <input type="file" multiple accept="image/*" onChange={(e) => setImages(Array.from(e.target.files))} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/90" />
+              </div>
+            )}
+
+            {isEdit && (
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                  <option value="open">Open</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </Select>
+              </div>
+            )}
+
+          </CardContent>
+          <CardFooter className="flex justify-end gap-2">
+            <Link to="/incidents">
+              <Button type="button" variant="outline">Cancel</Button>
+            </Link>
+            <Button type="submit" disabled={loading} variant={isEdit ? 'default' : 'destructive'}>
+              {loading ? 'Processing...' : (isEdit ? 'Update Status' : 'Submit Report')}
+            </Button>
+          </CardFooter>
+        </Card>
       </form>
     </div>
   );

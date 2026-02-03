@@ -42,3 +42,24 @@ authRouter.post('/logout', (req, res) => {
 authRouter.get('/me', authMiddleware, (req, res) => {
   res.json({ id: req.user.id, email: req.user.email, role: req.user.role });
 });
+
+authRouter.put('/profile', authMiddleware, async (req, res, next) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password) throw new AppError('Current and new password required', 400);
+    if (new_password.length < 6) throw new AppError('New password must be at least 6 characters', 400);
+
+    const result = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+    if (!user || !(await bcrypt.compare(current_password, user.password_hash))) {
+      throw new AppError('Incorrect current password', 401);
+    }
+
+    const hash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.user.id]);
+
+    res.json({ ok: true, message: 'Password updated successfully' });
+  } catch (e) {
+    next(e);
+  }
+});

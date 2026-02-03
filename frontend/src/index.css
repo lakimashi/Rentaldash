@@ -2,7 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* White */
+    --foreground: 222 47% 11%; /* Dark Gray */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --primary: 21 90% 48%; /* Orange 600 approx */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 40% 11.5%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 222 89% 60%; 
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* Keep a placeholder for dark mode if needed later, but focusing on Light mode per user request "very light background" */
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    /* ... rest would go here */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

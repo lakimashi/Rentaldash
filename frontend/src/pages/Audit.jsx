@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
 
 export default function Audit() {
   const { user } = useAuth();
@@ -17,41 +19,59 @@ export default function Audit() {
       .finally(() => setLoading(false));
   }, [isAdmin]);
 
-  if (!isAdmin) return <div className="text-gray-600">You need admin access to view the audit log.</div>;
-  if (loading) return <div className="text-gray-500">Loading...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (!isAdmin) return <div className="p-8 text-center text-muted-foreground">Admin access required.</div>;
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading audit logs...</div>;
+  if (error) return <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>;
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Audit Log</h1>
-      {logs.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">No audit entries yet.</div>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Time</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">User</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Action</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Entity</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">ID</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {logs.map((log) => (
-                <tr key={log.id}>
-                  <td className="px-4 py-2 text-sm text-gray-600">{new Date(log.created_at).toLocaleString()}</td>
-                  <td className="px-4 py-2 text-sm">{log.user_email || '—'}</td>
-                  <td className="px-4 py-2 text-sm">{log.action}</td>
-                  <td className="px-4 py-2 text-sm">{log.entity_type}</td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{log.entity_id || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Audit Log</h1>
+          <p className="text-muted-foreground">Recent system activity and changes.</p>
         </div>
-      )}
+      </div>
+
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        {logs.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No audit entries found.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Time</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Entity Type</TableHead>
+                <TableHead>Entity ID</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {logs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {new Date(log.created_at).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {log.user_email || <span className="text-muted-foreground italic">System</span>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="font-mono text-xs uppercase tracking-wide">
+                      {log.action}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="capitalize text-sm">{log.entity_type}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {log.entity_id || '—'}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

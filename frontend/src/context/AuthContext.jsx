@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -11,8 +12,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
-      fetch('/api/auth/me', { credentials: 'include', headers: { Authorization: `Bearer ${token}` } })
-        .then((r) => (r.ok ? r.json() : Promise.reject()))
+      api('/api/auth/me')
         .then(setUser)
         .catch(() => localStorage.removeItem(TOKEN_KEY))
         .finally(() => setLoading(false));
@@ -23,8 +23,7 @@ export function AuthProvider({ children }) {
 
   const login = (token) => {
     localStorage.setItem(TOKEN_KEY, token);
-    return fetch('/api/auth/me', { credentials: 'include', headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+    return api('/api/auth/me')
       .then((u) => {
         setUser(u);
         return u;
@@ -34,7 +33,7 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
     setUser(null);
-    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+    api('/api/auth/logout', { method: 'POST' }).catch(() => { });
   };
 
   const getToken = () => localStorage.getItem(TOKEN_KEY);

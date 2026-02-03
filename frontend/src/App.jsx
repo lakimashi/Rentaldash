@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
-import Layout from './components/Layout';
+import AppLayout from './components/layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import Availability from './pages/Availability';
 import Cars from './pages/Cars';
@@ -37,7 +37,7 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Layout />
+              <AppLayout />
             </ProtectedRoute>
           }
         >
@@ -48,6 +48,7 @@ export default function App() {
           <Route path="cars/:id/edit" element={<CarForm />} />
           <Route path="bookings" element={<Bookings />} />
           <Route path="bookings/new" element={<BookingForm />} />
+          <Route path="bookings/:id/edit" element={<BookingForm />} />
           <Route path="incidents" element={<Incidents />} />
           <Route path="incidents/new" element={<IncidentForm />} />
           <Route path="incidents/:id/edit" element={<IncidentForm />} />

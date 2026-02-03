@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Plus, Search, Filter, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 
 export default function Cars() {
   const [cars, setCars] = useState([]);
@@ -28,7 +34,7 @@ export default function Cars() {
     api('/api/cars').then((list) => {
       const uniq = [...new Set(list.map((c) => c.class))].sort();
       setAllClasses(uniq);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -45,64 +51,100 @@ export default function Cars() {
 
   const classes = allClasses.length ? allClasses : [...new Set(cars.map((c) => c.class))].sort();
 
-  if (loading) return <div className="text-gray-500">Loading...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading fleet data...</div>;
+  if (error) return <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Cars</h1>
-        {canEdit && <Link to="/cars/new" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">Add car</Link>}
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Fleet Management</h1>
+          <p className="text-muted-foreground">Manage your vehicle inventory and status.</p>
+        </div>
+        {canEdit && (
+          <Link to="/cars/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Vehicle
+            </Button>
+          </Link>
+        )}
       </div>
-      <div className="flex gap-4 mb-4">
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm">
-          <option value="">All statuses</option>
-          <option value="active">Active</option>
-          <option value="maintenance">Maintenance</option>
-          <option value="inactive">Inactive</option>
-        </select>
-        <select value={carClass} onChange={(e) => setCarClass(e.target.value)} className="border border-gray-300 rounded px-3 py-2 text-sm">
-          <option value="">All classes</option>
-          {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+
+      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-xl border shadow-sm">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search by plate, make, or model..." className="pl-9" />
+        </div>
+        <div className="flex gap-2">
+          <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-[180px]">
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="inactive">Inactive</option>
+          </Select>
+          <Select value={carClass} onChange={(e) => setCarClass(e.target.value)} className="w-[180px]">
+            <option value="">All Classes</option>
+            {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </div>
       </div>
+
       {cars.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
-          No cars yet. {canEdit && <Link to="/cars/new" className="text-gray-800 font-medium hover:underline">Add one</Link>}
+        <div className="text-center py-12 border-2 border-dashed rounded-xl">
+          <p className="text-muted-foreground mb-4">No cars found matching your criteria.</p>
+          {canEdit && <Link to="/cars/new"><Button variant="outline">Add your first car</Button></Link>}
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Plate</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Make / Model</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Year</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Class</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Rate</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                {canEdit && <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Actions</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {cars.map((car) => (
-                <tr key={car.id}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{car.plate_number}</td>
-                  <td className="px-4 py-2 text-sm">{car.make} {car.model}</td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{car.year}</td>
-                  <td className="px-4 py-2 text-sm text-gray-600">{car.class}</td>
-                  <td className="px-4 py-2 text-sm">${car.base_daily_rate}/day</td>
-                   <td className="px-4 py-2 text-sm"><span className={`px-2 py-0.5 rounded text-xs ${car.status === 'active' ? 'bg-green-100 text-green-800' : car.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>{car.status}</span></td>
-                   {canEdit && (
-                     <td className="px-4 py-2 text-right">
-                       <Link to={`/cars/${car.id}/edit`} className="text-sm text-gray-800 hover:underline mr-3">Edit</Link>
-                       <button onClick={() => handleDelete(car.id, car.plate_number)} className="text-sm text-red-600 hover:underline">Delete</button>
-                     </td>
-                   )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {cars.map((car) => (
+            <Card key={car.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <div className="aspect-video bg-muted relative flex items-center justify-center">
+                {/* Placeholder for car image if we had one */}
+                <span className="text-muted-foreground text-4xl font-light">{car.make[0]}</span>
+                <Badge
+                  variant={car.status === 'active' ? 'success' : car.status === 'maintenance' ? 'warning' : 'secondary'}
+                  className="absolute top-2 right-2"
+                >
+                  {car.status}
+                </Badge>
+              </div>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{car.make} {car.model}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{car.year} • {car.class}</p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pb-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Daily Rate</span>
+                  <span className="font-semibold">${car.base_daily_rate}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm mt-1">
+                  <span className="text-muted-foreground">Plate</span>
+                  <span className="font-mono bg-muted px-1 rounded">{car.plate_number}</span>
+                </div>
+              </CardContent>
+              {canEdit && (
+                <CardFooter className="pt-2 border-t flex justify-end gap-2 bg-muted/20">
+                  <Link to={`/cars/${car.id}/edit`}>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Link to={`/cars/${car.id}/documents`}>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Documents">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(car.id, car.plate_number)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          ))}
         </div>
       )}
     </div>

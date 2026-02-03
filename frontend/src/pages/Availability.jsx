@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select } from '../components/ui/select';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
+import { Search } from 'lucide-react';
 
 const today = new Date().toISOString().slice(0, 10);
 const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -19,8 +25,8 @@ export default function Availability() {
     api('/api/cars').then((list) => {
       const uniq = [...new Set(list.map((c) => c.class))].sort();
       setClasses(uniq);
-    }).catch(() => {});
-    api('/api/branches').then(setBranches).catch(() => {});
+    }).catch(() => { });
+    api('/api/branches').then(setBranches).catch(() => { });
   }, []);
 
   const search = () => {
@@ -37,45 +43,82 @@ export default function Availability() {
   useEffect(() => { search(); }, [start, end, carClass, branchId]);
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-6">Availability</h1>
-      <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6 flex flex-wrap gap-4 items-end">
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Start</label>
-          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="border border-gray-300 rounded px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">End</label>
-          <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="border border-gray-300 rounded px-3 py-2" />
-        </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Class</label>
-          <select value={carClass} onChange={(e) => setCarClass(e.target.value)} className="border border-gray-300 rounded px-3 py-2">
-            <option value="">All</option>
-            {classes.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Branch</label>
-          <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="border border-gray-300 rounded px-3 py-2">
-            <option value="">All</option>
-            {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        </div>
-        <button type="button" onClick={search} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">Search</button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-bold tracking-tight">Check Availability</h1>
+        <p className="text-muted-foreground">Find vehicles available for specific dates.</p>
       </div>
-      {loading && <p className="text-gray-500">Loading...</p>}
-      {!loading && cars.length === 0 && <p className="text-gray-500">No available cars for this range. Try different dates or filters.</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cars.map((car) => (
-          <div key={car.id} className="bg-white border border-gray-200 rounded-lg p-4">
-            {car.images?.[0] && <img src={car.images[0]} alt="" className="w-full h-32 object-cover rounded mb-2" />}
-            <p className="font-medium text-gray-900">{car.make} {car.model} ({car.year})</p>
-            <p className="text-sm text-gray-500">{car.plate_number} · {car.class}</p>
-            <p className="text-sm font-medium text-gray-700 mt-1">${car.base_daily_rate}/day</p>
-            <Link to={`/bookings/new?car_id=${car.id}&start=${start}&end=${end}`} className="inline-block mt-2 text-sm text-gray-800 font-medium hover:underline">Create Booking</Link>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Class</Label>
+              <Select value={carClass} onChange={(e) => setCarClass(e.target.value)}>
+                <option value="">All Classes</option>
+                {classes.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Branch</Label>
+              <Select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+                <option value="">All Branches</option>
+                {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </Select>
+            </div>
+            <Button onClick={search} className="w-full">
+              <Search className="mr-2 h-4 w-4" /> Search
+            </Button>
           </div>
-        ))}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4">
+        {loading && <div className="text-center py-8 text-muted-foreground">Checking availability...</div>}
+
+        {!loading && cars.length === 0 && (
+          <div className="text-center py-12 border-2 border-dashed rounded-xl">
+            <p className="text-muted-foreground">No vehicles available for these dates.</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {cars.map((car) => (
+            <Card key={car.id} className="overflow-hidden hover:shadow-lg transition-all">
+              <div className="aspect-video bg-muted/50 flex items-center justify-center relative">
+                {/* Image placeholder */}
+                <span className="text-4xl text-muted-foreground/20 font-bold">{car.make}</span>
+              </div>
+              <CardHeader>
+                <CardTitle className="text-lg">{car.make} {car.model}</CardTitle>
+                <p className="text-sm text-muted-foreground">{car.year} • {car.class}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="flex justify-between items-center font-medium">
+                  <span>Daily Rate</span>
+                  <span>${car.base_daily_rate}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-muted-foreground mt-1">
+                  <span>Plate</span>
+                  <span className="font-mono">{car.plate_number}</span>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Link to={`/bookings/new?car_id=${car.id}&start=${start}&end=${end}`} className="w-full">
+                  <Button className="w-full">Book Now</Button>
+                </Link>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

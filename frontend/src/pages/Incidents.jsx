@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { AlertTriangle, Plus, Eye } from 'lucide-react';
 
 export default function Incidents() {
   const [incidents, setIncidents] = useState([]);
@@ -17,46 +21,74 @@ export default function Incidents() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-gray-500">Loading...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (loading) return <div className="p-8 text-center text-muted-foreground">Loading incident reports...</div>;
+  if (error) return <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Incidents</h1>
-        {canEdit && <Link to="/incidents/new" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">New incident</Link>}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Incidents</h1>
+          <p className="text-muted-foreground">Track and manage vehicle damage and accidents.</p>
+        </div>
+        {canEdit && (
+          <Link to="/incidents/new">
+            <Button variant="destructive">
+              <Plus className="mr-2 h-4 w-4" /> Report Incident
+            </Button>
+          </Link>
+        )}
       </div>
-      {incidents.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
-          No incident reports yet. {canEdit && <Link to="/incidents/new" className="text-gray-800 font-medium hover:underline">Create one</Link>}
-        </div>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Date</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Car</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Severity</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Status</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Cost</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        {incidents.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No incidents reported.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Vehicle</TableHead>
+                <TableHead>Severity</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Estimated Cost</TableHead>
+                <TableHead className="w-[80px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {incidents.map((i) => (
-                <tr key={i.id}>
-                  <td className="px-4 py-2 text-sm text-gray-600">{new Date(i.incident_date).toLocaleDateString()}</td>
-                  <td className="px-4 py-2 text-sm">{i.plate_number} · {i.make} {i.model}</td>
-                  <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded text-xs ${i.severity === 'major' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'}`}>{i.severity}</span></td>
-                  <td className="px-4 py-2 text-sm">{i.status}</td>
-                  <td className="px-4 py-2 text-sm">{i.estimated_cost != null ? `$${i.estimated_cost}` : '—'}</td>
-                  <td className="px-4 py-2"><Link to={`/incidents/${i.id}/edit`} className="text-sm text-gray-800 hover:underline">View</Link></td>
-                </tr>
+                <TableRow key={i.id}>
+                  <TableCell className="text-sm font-medium">
+                    {new Date(i.incident_date).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <div>{i.make} {i.model}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{i.plate_number}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={i.severity === 'major' ? 'destructive' : 'secondary'}>
+                      {i.severity}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="capitalize">{i.status}</TableCell>
+                  <TableCell>
+                    {i.estimated_cost != null ? `$${i.estimated_cost}` : '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Link to={`/incidents/${i.id}/edit`}>
+                      <Button size="sm" variant="ghost">
+                        <Eye className="h-4 w-4 mr-1" /> View
+                      </Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }

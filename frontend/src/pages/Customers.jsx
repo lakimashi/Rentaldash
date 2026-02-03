@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Search, Plus, X, User } from 'lucide-react';
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -47,94 +52,123 @@ export default function Customers() {
       .finally(() => setSubmitting(false));
   };
 
-  if (loading) return <div className="text-gray-500">Loading...</div>;
-  if (error) return <div className="text-red-600">{error}</div>;
+  if (loading && !customers.length) return <div className="p-8 text-center text-muted-foreground">Loading customers...</div>;
+  if (error) return <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
+          <p className="text-muted-foreground">Manage customer profiles and details.</p>
+        </div>
         {canEdit && (
-          <button type="button" onClick={() => setShowForm(!showForm)} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700">
-            {showForm ? 'Cancel' : 'Add Customer'}
-          </button>
+          <Button onClick={() => setShowForm(!showForm)}>
+            {showForm ? <><X className="mr-2 h-4 w-4" /> Cancel</> : <><Plus className="mr-2 h-4 w-4" /> Add Customer</>}
+          </Button>
         )}
       </div>
-      
+
       {showForm && canEdit && (
-        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-lg p-4 mb-6 max-w-xl space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-            <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" rows="2" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ID Number</label>
-              <input value={form.id_number} onChange={(e) => setForm({ ...form, id_number: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">License Expiry</label>
-              <input type="date" value={form.license_expiry} onChange={(e) => setForm({ ...form, license_expiry: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2" />
-            </div>
-          </div>
-          <button type="submit" disabled={submitting} className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 disabled:opacity-50">
-            {submitting ? 'Adding...' : 'Add Customer'}
-          </button>
-        </form>
+        <Card className="animate-slide-up border-l-4 border-l-primary">
+          <CardHeader>
+            <CardTitle>New Customer Profile</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
+              <div className="space-y-2">
+                <Label>Full Name *</Label>
+                <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Address</Label>
+                <textarea
+                  className="flex h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>ID / Passport Number</Label>
+                  <Input value={form.id_number} onChange={(e) => setForm({ ...form, id_number: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>License Expiry</Label>
+                  <Input type="date" value={form.license_expiry} onChange={(e) => setForm({ ...form, license_expiry: e.target.value })} />
+                </div>
+              </div>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Adding...' : 'Save Customer'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="mb-4">
-        <input type="text" placeholder="Search by name, email, phone, or ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="border border-gray-300 rounded px-3 py-2 w-full md:w-96" />
+      <div className="relative">
+        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search by name, email, phone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 max-w-md"
+        />
       </div>
 
-      {customers.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500">
-          No customers yet. {canEdit && 'Add one above.'}
-        </div>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Name</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Email</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Phone</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">ID Number</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">License Expiry</th>
-                <th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        {customers.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No customers found.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Contact Info</TableHead>
+                <TableHead>ID / License</TableHead>
+                <TableHead>Address</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {customers.map((c) => (
-                <tr key={c.id}>
-                  <td className="px-4 py-2 text-sm text-gray-900">{c.name}</td>
-                  <td className="px-4 py-2 text-sm">{c.email || '—'}</td>
-                  <td className="px-4 py-2 text-sm">{c.phone || '—'}</td>
-                  <td className="px-4 py-2 text-sm">{c.id_number || '—'}</td>
-                  <td className="px-4 py-2 text-sm">{c.license_expiry || '—'}</td>
-                  <td className="px-4 py-2 text-right">
-                    <Link to={`/customers/${c.id}`} className="text-sm text-gray-800 hover:underline">View</Link>
-                  </td>
-                </tr>
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                        {c.name.charAt(0).toUpperCase()}
+                      </div>
+                      {c.name}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    <div>{c.email}</div>
+                    <div className="text-muted-foreground">{c.phone}</div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    <div>ID: {c.id_number || '—'}</div>
+                    <div className="text-xs text-muted-foreground">Exp: {c.license_expiry || '—'}</div>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                    {c.address}
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </TableBody>
+          </Table>
+        )}
+      </div>
     </div>
   );
 }
