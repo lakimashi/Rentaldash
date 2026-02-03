@@ -18,6 +18,9 @@ export default function Cars() {
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'staff';
 
+  const [selectedIds, setSelectedIds] = useState([]);
+  const isAdmin = user?.role === 'admin';
+
   const [allClasses, setAllClasses] = useState([]);
 
   const handleDelete = async (carId, plateNumber) => {
@@ -25,9 +28,34 @@ export default function Cars() {
     try {
       await api(`/api/cars/${carId}`, { method: 'DELETE' });
       setCars(cars.filter((c) => c.id !== carId));
+      setSelectedIds(selectedIds.filter(id => id !== carId));
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!isAdmin) return;
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} cars?`)) return;
+
+    try {
+      await api('/api/cars/bulk-delete', {
+        method: 'POST',
+        body: { ids: selectedIds },
+      });
+      setSelectedIds([]);
+      // Refresh list
+      const list = await api('/api/cars');
+      setCars(list);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(current =>
+      current.includes(id) ? current.filter(i => i !== id) : [...current, id]
+    );
   };
 
   useEffect(() => {
@@ -61,6 +89,11 @@ export default function Cars() {
           <h1 className="text-3xl font-bold tracking-tight">Fleet Management</h1>
           <p className="text-muted-foreground">Manage your vehicle inventory and status.</p>
         </div>
+        {isAdmin && selectedIds.length > 0 && (
+          <Button variant="destructive" onClick={handleBulkDelete}>
+            <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedIds.length})
+          </Button>
+        )}
         {canEdit && (
           <Link to="/cars/new">
             <Button>
@@ -97,7 +130,7 @@ export default function Cars() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {cars.map((car) => (
-            <Card key={car.id} className="overflow-hidden hover:shadow-md transition-shadow">
+            <Card key={car.id} className={`overflow-hidden hover:shadow-md transition-shadow ${selectedIds.includes(car.id) ? 'ring-2 ring-primary' : ''}`}>
               <div className="aspect-video bg-muted relative flex items-center justify-center">
                 {/* Placeholder for car image if we had one */}
                 <span className="text-muted-foreground text-4xl font-light">{car.make[0]}</span>
@@ -107,6 +140,14 @@ export default function Cars() {
                 >
                   {car.status}
                 </Badge>
+                {isAdmin && (
+                  <input
+                    type="checkbox"
+                    className="absolute top-2 left-2 h-5 w-5 rounded border-gray-300 z-10"
+                    checked={selectedIds.includes(car.id)}
+                    onChange={(e) => { e.stopPropagation(); toggleSelect(car.id); }}
+                  />
+                )}
               </div>
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start">
@@ -145,8 +186,7 @@ export default function Cars() {
               )}
             </Card>
           ))}
-        </div>
-      )}
+        </div>)}
     </div>
   );
 }

@@ -23,13 +23,13 @@ customersRouter.get('/', async (req, res, next) => {
     let q = 'SELECT * FROM customers WHERE 1=1';
     const params = [];
     let i = 1;
-    
+
     if (search) {
       q += ` AND (name LIKE $${i} OR email LIKE $${i} OR phone LIKE $${i} OR id_number LIKE $${i})`;
       params.push(`%${search}%`);
       i++;
     }
-    
+
     q += ' ORDER BY name';
     const r = await pool.query(q, params);
     res.json(r.rows);
@@ -41,7 +41,7 @@ customersRouter.get('/:id', async (req, res, next) => {
     const r = await pool.query('SELECT * FROM customers WHERE id = $1', [req.params.id]);
     const customer = r.rows[0];
     if (!customer) throw new AppError('Customer not found', 404);
-    
+
     const bookings = await pool.query(
       `SELECT b.*, c.plate_number, c.make, c.model 
        FROM bookings b 
@@ -50,12 +50,12 @@ customersRouter.get('/:id', async (req, res, next) => {
        ORDER BY b.start_date DESC`,
       [req.params.id]
     );
-    
+
     const withExtras = await Promise.all(bookings.rows.map(async (b) => {
       const ex = await pool.query('SELECT extra_name, extra_price FROM booking_extras WHERE booking_id = $1', [b.id]);
       return { ...b, extras: ex.rows };
     }));
-    
+
     res.json({ ...customer, bookings: withExtras });
   } catch (e) { next(e); }
 });
@@ -80,16 +80,16 @@ customersRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next
     const updates = [];
     const values = [];
     let i = 1;
-    
+
     if (body.email !== undefined) { updates.push(`email = $${i}`); values.push(body.email); i++; }
     if (body.phone !== undefined) { updates.push(`phone = $${i}`); values.push(body.phone); i++; }
     if (body.name !== undefined) { updates.push(`name = $${i}`); values.push(body.name); i++; }
     if (body.address !== undefined) { updates.push(`address = $${i}`); values.push(body.address); i++; }
     if (body.id_number !== undefined) { updates.push(`id_number = $${i}`); values.push(body.id_number); i++; }
     if (body.license_expiry !== undefined) { updates.push(`license_expiry = $${i}`); values.push(body.license_expiry); i++; }
-    
+
     if (updates.length === 0) throw new AppError('No fields to update', 400);
-    
+
     values.push(req.params.id);
     const r = await pool.query(
       `UPDATE customers SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`,
@@ -110,3 +110,23 @@ customersRouter.delete('/:id', requireRole('admin'), async (req, res, next) => {
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
+
+customersRouter.post('/bulk-delete', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { ids } = z.object({ ids: z.array(z.number()) }).parse(req.body);
+    if (!ids.length) return res.json({ ok: true });
+
+    // Check if any customer has active bookings
+    const active = await pool.query(
+      "SELECT DISTINCT customer_id FROM bookings WHERE customer_id IN (" + ids.join(',') + ") AND status IN ('active', 'confirmed', 'reserved')"
+    );
+    if (active.rows.length > 0) {
+      throw new AppError('Some selected customers have active bookings and cannot be deleted.', 400);
+    }
+
+    await pool.query('DELETE FROM customers WHERE id IN (' + ids.join(',') + ')');
+    await logAudit(req.user.id, 'bulk_delete', 'customer', null, { ids });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+

@@ -82,8 +82,8 @@ carsRouter.get('/:id', async (req, res, next) => {
 
 carsRouter.post('/', requireRole('admin', 'staff'), async (req, res, next) => {
   try {
-    const body = carSchema.parse({ 
-      ...req.body, 
+    const body = carSchema.parse({
+      ...req.body,
       year: req.body.year != null ? Number(req.body.year) : undefined,
       current_mileage: req.body.current_mileage != null ? Number(req.body.current_mileage) : undefined,
     });
@@ -102,8 +102,8 @@ carsRouter.post('/', requireRole('admin', 'staff'), async (req, res, next) => {
 
 carsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next) => {
   try {
-    const body = carSchema.partial().parse({ 
-      ...req.body, 
+    const body = carSchema.partial().parse({
+      ...req.body,
       year: req.body.year != null ? Number(req.body.year) : undefined,
       current_mileage: req.body.current_mileage != null ? Number(req.body.current_mileage) : undefined,
     });
@@ -136,17 +136,27 @@ carsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next) => 
   } catch (e) { next(e); }
 });
 
-carsRouter.delete('/:id', requireRole('admin', 'staff'), async (req, res, next) => {
+
+
+carsRouter.post('/bulk-delete', requireRole('admin'), async (req, res, next) => {
   try {
-    const r = await pool.query(
-      "UPDATE cars SET status = 'inactive' WHERE id = $1 RETURNING id",
-      [req.params.id]
+    const { ids } = z.object({ ids: z.array(z.number()) }).parse(req.body);
+    if (!ids.length) return res.json({ ok: true });
+
+    // Check if any car has active bookings
+    const active = await pool.query(
+      "SELECT DISTINCT car_id FROM bookings WHERE car_id IN (" + ids.join(',') + ") AND status IN ('active', 'confirmed', 'reserved')"
     );
-    if (!r.rows[0]) throw new AppError('Car not found', 404);
-    await logAudit(req.user.id, 'archive', 'car', req.params.id, {});
+    if (active.rows.length > 0) {
+      throw new AppError('Some selected cars have active or confirmed bookings and cannot be deleted.', 400);
+    }
+
+    await pool.query("UPDATE cars SET status = 'inactive' WHERE id IN (" + ids.join(',') + ")");
+    await logAudit(req.user.id, 'bulk_archive', 'car', null, { ids });
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
+
 
 carsRouter.post('/:id/images', requireRole('admin', 'staff'), carUpload.array('images', 10), async (req, res, next) => {
   try {
@@ -175,9 +185,9 @@ carsRouter.post('/:id/documents', requireRole('admin', 'staff'), documentUpload.
     const carId = req.params.id;
     const r = await pool.query('SELECT 1 FROM cars WHERE id = $1', [carId]);
     if (!r.rows[0]) throw new AppError('Car not found', 404);
-    
+
     if (!req.file) throw new AppError('No file uploaded', 400);
-    
+
     const urlPath = `/uploads/vehicles/${path.basename(req.file.filename)}`;
     const ins = await pool.query(
       `INSERT INTO vehicle_documents (car_id, document_type, title, expiry_date, url_path, file_size, uploaded_by) 

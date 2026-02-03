@@ -79,24 +79,24 @@ bookingsRouter.post('/', requireRole('admin', 'staff'), async (req, res, next) =
     const conflict = await hasConflict(body.car_id, body.start_date, body.end_date);
     if (conflict) throw new AppError('Car is not available for this date range', 400);
     const status = body.status || 'draft';
-    
+
     const r = await pool.query(
       `INSERT INTO bookings (car_id, customer_name, customer_phone, customer_id_passport, customer_id, start_date, end_date, status, total_price, deposit, notes, start_mileage, end_mileage)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [body.car_id, body.customer_name, body.customer_phone ?? null, body.customer_id_passport ?? null, body.customer_id ?? null, body.start_date, body.end_date, status, body.total_price ?? 0, body.deposit ?? 0, body.notes ?? null, body.start_mileage ?? null, body.end_mileage ?? null]
     );
     const booking = r.rows[0];
-    
+
     if (body.extras?.length) {
       for (const e of body.extras) {
         await pool.query('INSERT INTO booking_extras (booking_id, extra_name, extra_price) VALUES ($1, $2, $3)', [booking.id, e.extra_name, e.extra_price]);
       }
     }
-    
+
     if (booking.start_mileage) {
       await pool.query('UPDATE cars SET current_mileage = $1 WHERE id = $2', [booking.start_mileage, booking.car_id]);
     }
-    
+
     await logAudit(req.user.id, 'create', 'booking', booking.id, { status: booking.status });
     res.status(201).json({ ...booking, total_price: parseFloat(booking.total_price), deposit: parseFloat(booking.deposit) });
   } catch (e) { next(e); }
@@ -123,7 +123,7 @@ bookingsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next)
     if (['completed', 'cancelled'].includes(existing.rows[0].status)) {
       throw new AppError('Cannot edit completed or cancelled bookings', 400);
     }
-    
+
     const body = bookingSchema.partial().parse({
       ...req.body,
       car_id: req.body.car_id != null ? Number(req.body.car_id) : undefined,
@@ -133,11 +133,11 @@ bookingsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next)
       start_mileage: req.body.start_mileage != null ? Number(req.body.start_mileage) : undefined,
       end_mileage: req.body.end_mileage != null ? Number(req.body.end_mileage) : undefined,
     });
-    
+
     const updates = [];
     const values = [];
     let i = 1;
-    
+
     if (body.car_id !== undefined) { updates.push(`car_id = $${i}`); values.push(body.car_id); i++; }
     if (body.customer_name !== undefined) { updates.push(`customer_name = $${i}`); values.push(body.customer_name); i++; }
     if (body.customer_phone !== undefined) { updates.push(`customer_phone = $${i}`); values.push(body.customer_phone); i++; }
@@ -151,22 +151,22 @@ bookingsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next)
     if (body.notes !== undefined) { updates.push(`notes = $${i}`); values.push(body.notes); i++; }
     if (body.start_mileage !== undefined) { updates.push(`start_mileage = $${i}`); values.push(body.start_mileage); i++; }
     if (body.end_mileage !== undefined) { updates.push(`end_mileage = $${i}`); values.push(body.end_mileage); i++; }
-    
+
     if (updates.length === 0) throw new AppError('No fields to update', 400);
-    
+
     values.push(req.params.id);
     const r = await pool.query(
       `UPDATE bookings SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`,
       values
     );
-    
+
     const booking = r.rows[0];
-    
+
     if (body.start_date || body.end_date || body.car_id) {
       const conflict = await hasConflict(booking.car_id, booking.start_date, booking.end_date, booking.id);
       if (conflict) throw new AppError('Car is not available for this date range', 400);
     }
-    
+
     if (body.extras !== undefined) {
       await pool.query('DELETE FROM booking_extras WHERE booking_id = $1', [booking.id]);
       if (body.extras.length) {
@@ -175,14 +175,28 @@ bookingsRouter.put('/:id', requireRole('admin', 'staff'), async (req, res, next)
         }
       }
     }
-    
+
     if (body.end_mileage && body.start_mileage) {
       const milesDriven = body.end_mileage - body.start_mileage;
       await pool.query('UPDATE bookings SET miles_driven = $1 WHERE id = $2', [milesDriven, booking.id]);
       await pool.query('UPDATE cars SET current_mileage = $1 WHERE id = $2', [body.end_mileage, booking.car_id]);
     }
-    
+
     await logAudit(req.user.id, 'update', 'booking', booking.id, body);
     res.json(booking);
   } catch (e) { next(e); }
 });
+
+bookingsRouter.post('/bulk-delete', requireRole('admin'), async (req, res, next) => {
+  try {
+    const { ids } = z.object({ ids: z.array(z.number()) }).parse(req.body);
+    if (!ids.length) return res.json({ ok: true });
+
+    await pool.query('DELETE FROM booking_extras WHERE booking_id IN (' + ids.join(',') + ')');
+    await pool.query('DELETE FROM bookings WHERE id IN (' + ids.join(',') + ')');
+
+    await logAudit(req.user.id, 'bulk_delete', 'booking', null, { ids });
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+

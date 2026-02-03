@@ -6,7 +6,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Search, Plus, X, User } from 'lucide-react';
+import { Search, Plus, X, User, Trash2 } from 'lucide-react';
 
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -18,6 +18,9 @@ export default function Customers() {
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'staff';
+  const isAdmin = user?.role === 'admin';
+  const [selectedIds, setSelectedIds] = useState([]);
+
 
   useEffect(() => {
     fetchCustomers();
@@ -62,6 +65,11 @@ export default function Customers() {
           <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
           <p className="text-muted-foreground">Manage customer profiles and details.</p>
         </div>
+        {isAdmin && selectedIds.length > 0 && (
+          <Button variant="destructive" onClick={handleBulkDelete}>
+            <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedIds.length})
+          </Button>
+        )}
         {canEdit && (
           <Button onClick={() => setShowForm(!showForm)}>
             {showForm ? <><X className="mr-2 h-4 w-4" /> Cancel</> : <><Plus className="mr-2 h-4 w-4" /> Add Customer</>}
@@ -135,6 +143,16 @@ export default function Customers() {
           <Table>
             <TableHeader>
               <TableRow>
+                {isAdmin && (
+                  <TableHead className="w-[40px]">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={selectedIds.length === customers.length && customers.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Customer</TableHead>
                 <TableHead>Contact Info</TableHead>
                 <TableHead>ID / License</TableHead>
@@ -143,7 +161,17 @@ export default function Customers() {
             </TableHeader>
             <TableBody>
               {customers.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} data-state={selectedIds.includes(c.id) ? 'selected' : ''}>
+                  {isAdmin && (
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300"
+                        checked={selectedIds.includes(c.id)}
+                        onChange={() => toggleSelect(c.id)}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">

@@ -51,6 +51,7 @@ export async function getAvailableCars({ start, end, class: carClass, branch_id 
     );
     if (hasBooking.rows.length > 0) continue;
 
+
     const hasMaintenance = await pool.query(
       `SELECT 1 FROM maintenance_blocks WHERE car_id = $1 AND start_date < $3 AND end_date > $2 LIMIT 1`,
       [car.id, startDate, endDate]

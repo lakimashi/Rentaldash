@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Plus, Check, MoreHorizontal, Pencil } from 'lucide-react';
+import { Plus, Check, Pencil, Trash2 } from 'lucide-react';
 
 const statusBadgeVariants = {
   draft: 'secondary',
@@ -22,17 +22,53 @@ export default function Bookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
   const { user } = useAuth();
   const canEdit = user?.role === 'admin' || user?.role === 'staff';
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
+    fetchBookings();
+  }, [status]);
+
+  const fetchBookings = () => {
     let url = '/api/bookings';
     if (status) url += `?status=${status}`;
     api(url)
       .then(setBookings)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [status]);
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(current =>
+      current.includes(id) ? current.filter(i => i !== id) : [...current, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === bookings.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(bookings.map(b => b.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!isAdmin) return;
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} bookings?`)) return;
+
+    try {
+      await api('/api/bookings/bulk-delete', {
+        method: 'POST',
+        body: { ids: selectedIds },
+      });
+      setSelectedIds([]);
+      fetchBookings();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   if (loading) return <div className="p-8 text-center text-muted-foreground">Loading bookings...</div>;
   if (error) return <div className="p-4 text-red-600 bg-red-50 rounded-lg">{error}</div>;
@@ -44,13 +80,20 @@ export default function Bookings() {
           <h1 className="text-3xl font-bold tracking-tight">Bookings</h1>
           <p className="text-muted-foreground">Manage reservations and active rentals.</p>
         </div>
-        {canEdit && (
-          <Link to="/bookings/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> New Booking
+        <div className="flex gap-2">
+          {isAdmin && selectedIds.length > 0 && (
+            <Button variant="destructive" onClick={handleBulkDelete}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedIds.length})
             </Button>
-          </Link>
-        )}
+          )}
+          {canEdit && (
+            <Link to="/bookings/new">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> New Booking
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 bg-card p-4 rounded-xl border shadow-sm max-w-sm">
@@ -76,6 +119,16 @@ export default function Bookings() {
           <Table>
             <TableHeader>
               <TableRow>
+                {isAdmin && (
+                  <TableHead className="w-[40px]">
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      checked={selectedIds.length === bookings.length && bookings.length > 0}
+                      onChange={toggleSelectAll}
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Customer</TableHead>
                 <TableHead>Vehicle</TableHead>
                 <TableHead>Dates</TableHead>
@@ -86,7 +139,17 @@ export default function Bookings() {
             </TableHeader>
             <TableBody>
               {bookings.map((b) => (
-                <TableRow key={b.id}>
+                <TableRow key={b.id} data-state={selectedIds.includes(b.id) ? 'selected' : ''}>
+                  {isAdmin && (
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300"
+                        checked={selectedIds.includes(b.id)}
+                        onChange={() => toggleSelect(b.id)}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">{b.customer_name}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -130,3 +193,4 @@ export default function Bookings() {
     </div>
   );
 }
+
