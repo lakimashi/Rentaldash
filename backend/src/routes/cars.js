@@ -31,11 +31,15 @@ const documentUpload = multer({
 export const carsRouter = Router();
 carsRouter.use(authMiddleware);
 
+// Validation constraints from environment
+const CAR_YEAR_MIN = parseInt(process.env.CAR_YEAR_MIN || '1900');
+const CAR_YEAR_MAX = parseInt(process.env.CAR_YEAR_MAX || '2100');
+
 const carSchema = z.object({
   plate_number: z.string().min(1),
   make: z.string().min(1),
   model: z.string().min(1),
-  year: z.number().int().min(1900).max(2100),
+  year: z.number().int().min(CAR_YEAR_MIN).max(CAR_YEAR_MAX),
   class: z.string().min(1),
   branch_id: z.number().int().optional().nullable(),
   status: z.enum(['active', 'maintenance', 'inactive']).optional(),

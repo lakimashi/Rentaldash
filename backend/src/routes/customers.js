@@ -8,10 +8,14 @@ import { logAudit } from '../services/auditService.js';
 export const customersRouter = Router();
 customersRouter.use(authMiddleware);
 
+// Validation constraints from environment
+const CUSTOMER_NAME_MIN_LENGTH = parseInt(process.env.CUSTOMER_NAME_MIN_LENGTH || '2');
+const CUSTOMER_NAME_MAX_LENGTH = parseInt(process.env.CUSTOMER_NAME_MAX_LENGTH || '100');
+
 const customerSchema = z.object({
   email: z.string().email().optional().nullable(),
   phone: z.string().min(10).max(20).optional(),
-  name: z.string().min(2).max(100),
+  name: z.string().min(CUSTOMER_NAME_MIN_LENGTH).max(CUSTOMER_NAME_MAX_LENGTH),
   address: z.string().max(500).optional().nullable(),
   id_number: z.string().max(50).optional().nullable(),
   license_expiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),

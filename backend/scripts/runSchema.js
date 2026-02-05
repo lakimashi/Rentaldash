@@ -36,4 +36,16 @@ if (fs.existsSync(migrationPath)) {
   }
 }
 
+// Initialize settings with environment variables
+const businessName = process.env.BUSINESS_NAME || 'Rental Agency';
+const defaultCurrency = process.env.DEFAULT_CURRENCY || 'USD';
+const defaultVatPercent = parseFloat(process.env.DEFAULT_VAT_PERCENT || '0');
+
+const initSettings = db.prepare(`
+  INSERT OR IGNORE INTO settings (id, agency_name, currency, vat_percent)
+  VALUES (1, ?, ?, ?)
+`);
+initSettings.run(businessName, defaultCurrency, defaultVatPercent);
+console.log('Settings initialized:', { businessName, defaultCurrency, defaultVatPercent });
+
 db.close();

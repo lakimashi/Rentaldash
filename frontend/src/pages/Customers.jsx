@@ -21,6 +21,35 @@ export default function Customers() {
   const isAdmin = user?.role === 'admin';
   const [selectedIds, setSelectedIds] = useState([]);
 
+  const toggleSelect = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === customers.length && customers.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(customers.map(c => c.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return;
+    if (!confirm(`Delete ${selectedIds.length} customer(s)? This action cannot be undone.`)) return;
+
+    try {
+      const res = await api('/api/customers/bulk-delete', {
+        method: 'POST',
+        body: { ids: selectedIds }
+      });
+      setSelectedIds([]);
+      fetchCustomers(search);
+    } catch (e) {
+      alert(e.message || 'Failed to delete customers');
+    }
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -175,7 +204,7 @@ export default function Customers() {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                        {c.name.charAt(0).toUpperCase()}
+                        {(c.name || '?').charAt(0).toUpperCase()}
                       </div>
                       {c.name}
                     </div>

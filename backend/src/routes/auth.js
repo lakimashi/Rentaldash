@@ -26,7 +26,9 @@ authRouter.post(
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
-      res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
+      const cookieMaxAge = parseInt(process.env.COOKIE_MAX_AGE || '604800000'); // 7 days default
+      const sameSite = process.env.COOKIE_SAME_SITE || 'lax';
+      res.cookie('token', token, { httpOnly: true, maxAge: cookieMaxAge, sameSite });
       res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
     } catch (e) {
       next(e);

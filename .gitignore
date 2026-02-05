@@ -3,7 +3,9 @@ dist/
 build/
 .env
 .env.local
+.env.backup
 *.log
+logs/
 .DS_Store
 uploads/
 backend/uploads/
@@ -15,3 +17,14 @@ coverage/
 backend/data/
 *.bak
 frontend/dist/
+
+# Generated files
+BUSINESS_SETUP_NOTES.md
+ecosystem.config.js
+pm2*.log
+backups/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
