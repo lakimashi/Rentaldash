@@ -148,14 +148,16 @@ carsRouter.post('/bulk-delete', requireRole('admin'), async (req, res, next) => 
     if (!ids.length) return res.json({ ok: true });
 
     // Check if any car has active bookings
+    const placeholders = ids.map(() => '?').join(',');
     const active = await pool.query(
-      "SELECT DISTINCT car_id FROM bookings WHERE car_id IN (" + ids.join(',') + ") AND status IN ('active', 'confirmed', 'reserved')"
+      `SELECT DISTINCT car_id FROM bookings WHERE car_id IN (${placeholders}) AND status IN ('active', 'confirmed', 'reserved')`,
+      ids
     );
     if (active.rows.length > 0) {
       throw new AppError('Some selected cars have active or confirmed bookings and cannot be deleted.', 400);
     }
 
-    await pool.query("UPDATE cars SET status = 'inactive' WHERE id IN (" + ids.join(',') + ")");
+    await pool.query(`UPDATE cars SET status = 'inactive' WHERE id IN (${placeholders})`, ids);
     await logAudit(req.user.id, 'bulk_archive', 'car', null, { ids });
     res.json({ ok: true });
   } catch (e) { next(e); }
